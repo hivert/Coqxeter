@@ -1,0 +1,8 @@
+-R theories/ Combi
+-arg -w
+-arg -notation-overridden
+-arg -w
+-arg -ambiguous-paths
+theories/natbar.v
+theories/present.v
+theories/coxsystem.v
