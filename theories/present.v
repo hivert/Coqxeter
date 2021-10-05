@@ -16,7 +16,7 @@
 Require Import mathcomp.ssreflect.ssreflect.
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq.
 From mathcomp Require Import choice fintype finset finfun.
-From mathcomp Require Import bigop fingroup perm morphism.
+From mathcomp Require Import bigop fingroup perm morphism alt.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -297,3 +297,25 @@ constructor => //=.
 Qed.
 
 End PresTriv.
+
+
+Section PresBool.
+
+Lemma pres_bool :
+  (fun _ : 'I_1 => true, [:: ([:: ord0; ord0], [::])])
+    \present [group of [set: bool]].
+Proof.
+have trin : true \in [set true | _ : 'I_1] by apply/imsetP; exists ord0.
+constructor => /=.
+- apply/eqP; rewrite -subTset.
+  apply/subsetP => [[|]] _; apply/generatedP=> G /subsetP/(_ true)/(_ trin) => //.
+  by move=> trinG; exact: (groupM trinG trinG).
+- by rewrite andbT big_nil big_cons big_seq1.
+- move=> gT genH; rewrite andbT big_nil big_cons big_seq1 /= => /eqP Heq.
+  pose phi b := if b then genH ord0 else 1.
+  have phi_morph : {in [set: bool] & , {morph phi : x y / x * y}}.
+    by case=> /= [] [] _ _ /=; rewrite ?Heq ?mulg1 ?mul1g.
+  by exists (Morphism phi_morph) => i /=; rewrite ord1.
+Qed.
+
+End PresBool.

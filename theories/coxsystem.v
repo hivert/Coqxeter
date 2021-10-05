@@ -188,21 +188,21 @@ Local Notation "''M'" := (@coxmat _ _ CS).
 Local Notation "''M_' p" := ('M p).
 Local Notation word := (seq I).
 
-Definition refls := [set 's_i ^ w | i in I, w in W].
+Definition reflexions := [set 's_i ^ w | i in I, w in W].
 
-Lemma reflsW t : t \in refls -> t \in W.
+Lemma reflsW t : t \in reflexions -> t \in W.
 Proof. by move/imset2P => [i w _ /groupJr + ->] => ->; apply memcoxs. Qed.
-Lemma coxs_refls i : 's_i \in refls.
+Lemma coxs_refls i : 's_i \in reflexions.
 Proof. by apply/imset2P; exists i 1 => //; rewrite conjg1. Qed.
-Lemma conj_refls w t : w \in W -> t \in refls -> t ^ w \in refls.
+Lemma conj_refls w t : w \in W -> t \in reflexions -> t ^ w \in reflexions.
 Proof.
-rewrite /refls => win /imset2P [i v _ vin ->{t}].
+move=> win /imset2P [i v _ vin ->{t}].
 apply/imset2P; exists i (v * w) => //; first exact: groupM.
 by rewrite conjgM.
 Qed.
-Lemma conjs_refls i t : t \in refls -> t ^ 's_i \in refls.
+Lemma conjs_refls i t : t \in reflexions -> t ^ 's_i \in reflexions.
 Proof. by move/conj_refls; apply; apply: memcoxs. Qed.
-Lemma reflsK t : t \in refls -> t * t = 1.
+Lemma reflsK t : t \in reflexions -> t * t = 1.
 Proof. by move/imset2P => [i w _ _ ->]; rewrite -conjMg mulss conj1g. Qed.
 
 Lemma coxwrev s : 's_[rev s] = 's_[s] ^-1.
@@ -242,11 +242,10 @@ rewrite !big_cat /= mulgA.
 case: (drop i s) => [|l1 d] /=; first by rewrite big_nil !mulg1.
 by rewrite take0 big_seq1 mulsK.
 Qed.
-Lemma tword_refl i s : i < size s -> tword (take i.+1 s) \in refls.
+Lemma tword_refl i s : i < size s -> tword (take i.+1 s) \in reflexions.
 Proof.
 move/size_takel; case/lastP: (take _ _) => // {}s sn _.
-rewrite twordE /refls.
-rewrite -{1}(invgK 's_[s]) -mulgA -conjgE; apply: imset2_f => //.
+rewrite twordE -{1}(invgK 's_[s]) -mulgA -conjgE; apply: imset2_f => //.
 by rewrite groupV.
 Qed.
 
@@ -415,62 +414,64 @@ case: (ltngtP (length ('s_i * w)) (length w)) => Hlen; first last.
   exact/lenghtMC_geq/groupM.
 Qed.
 
-Structure refl : predArgType := Refl { reflval :> gT; _ : reflval \in refls}.
-Canonical refl_subType := Eval hnf in [subType for reflval].
-Definition refl_eqMixin := Eval hnf in [eqMixin of refl by <:].
-Canonical refl_eqType := EqType refl refl_eqMixin.
-Definition refl_choiceMixin := Eval hnf in [choiceMixin of refl by <:].
-Canonical refl_choiceType := ChoiceType refl refl_choiceMixin.
-Definition refl_countMixin := Eval hnf in [countMixin of refl by <:].
-Canonical refl_countType := CountType refl refl_countMixin.
-Canonical refl_subCountType := Eval hnf in [subCountType of refl].
-Definition refl_finMixin := Eval hnf in [finMixin of refl by <:].
-Canonical refl_finType := FinType refl refl_finMixin.
-Canonical refl_subFinType := Eval hnf in [subFinType of refl].
+Structure coxrefl : predArgType :=
+  CoxRefl { coxreflval :> gT; _ : coxreflval \in reflexions}.
+Canonical coxrefl_subType := Eval hnf in [subType for coxreflval].
+Definition coxrefl_eqMixin := Eval hnf in [eqMixin of coxrefl by <:].
+Canonical coxrefl_eqType := EqType coxrefl coxrefl_eqMixin.
+Definition coxrefl_choiceMixin := Eval hnf in [choiceMixin of coxrefl by <:].
+Canonical coxrefl_choiceType := ChoiceType coxrefl coxrefl_choiceMixin.
+Definition coxrefl_countMixin := Eval hnf in [countMixin of coxrefl by <:].
+Canonical coxrefl_countType := CountType coxrefl coxrefl_countMixin.
+Canonical coxrefl_subCountType := Eval hnf in [subCountType of coxrefl].
+Definition coxrefl_finMixin := Eval hnf in [finMixin of coxrefl by <:].
+Canonical coxrefl_finType := FinType coxrefl coxrefl_finMixin.
+Canonical coxrefl_subFinType := Eval hnf in [subFinType of coxrefl].
 
-Lemma reflP (t : refl) : reflval t \in refls.
+Lemma coxreflP (t : coxrefl) : coxreflval t \in reflexions.
 Proof. by case: t. Qed.
 
-Definition refli i := Refl (coxs_refls i).
-Definition reflconjs (t : refl) i := Refl (conjs_refls i (reflP t)).
-Definition reflconjw (t : refl) (s : seq I) :=
-  Refl (conj_refls (memcoxw s) (reflP t)).
+Definition coxrefli i := CoxRefl (coxs_refls i).
+Definition coxreflJs (t : coxrefl) i :=
+  CoxRefl (conjs_refls i (coxreflP t)).
+Definition coxreflJw (t : coxrefl) (s : seq I) :=
+  CoxRefl (conj_refls (memcoxw s) (coxreflP t)).
 
-Lemma refliE i : val (refli i) = 's_i.
+Lemma coxrefliE i : val (coxrefli i) = 's_i.
 Proof. by []. Qed.
-Lemma reflconjsE t i : val (reflconjs t i) = t ^ 's_i.
+Lemma coxreflJsE t i : val (coxreflJs t i) = t ^ 's_i.
 Proof. by []. Qed.
-Lemma reflconjwE t s : val (reflconjw t s) = t ^ 's_[s].
+Lemma coxreflJwE t s : val (coxreflJw t s) = t ^ 's_[s].
 Proof. by []. Qed.
 
-Lemma WbE (p1 p2 : refl * bool) :
+Lemma reflb_eqE (p1 p2 : coxrefl * bool) :
   (p1 == p2) = (val p1.1 == val p2.1) && (p1.2 == p2.2).
 Proof. by case: p1 p2 => [t1 e1] [t2 e2]; rewrite xpair_eqE -val_eqE. Qed.
 
-Definition actWb i :=
-  [fun p : refl * bool => (reflconjs p.1 i, p.2 * ('s_i == val p.1))].
+Definition actreflb i :=
+  [fun p : coxrefl * bool => (coxreflJs p.1 i, p.2 * ('s_i == val p.1))].
 
-Lemma actWbK i : involutive (actWb i).
+Lemma actreflbK i : involutive (actreflb i).
 Proof.
 move=> /= [t e] /=; congr (_, _).
   by apply val_inj; rewrite /= -conjgM mulss conjg1.
 rewrite eq_conjg coxsV conjgg -mulgA.
 by case: eqP => _; rewrite mulg1.
 Qed.
-Definition permWb i : {perm refl * bool} := perm (can_inj (actWbK i)).
+Definition permreflb i : {perm coxrefl * bool} := perm (can_inj (actreflbK i)).
 
-Lemma permWbK i : permWb i ^+ 2 = 1.
-Proof. by apply/permP => p; rewrite !permE /= !permE actWbK. Qed.
+Lemma permreflbK i : permreflb i ^+ 2 = 1.
+Proof. by apply/permP => p; rewrite !permE /= !permE actreflbK. Qed.
 
-Local Notation neq s t :=
+Local Notation ntw s t :=
   (count_mem t [seq tword (take i.+1 s) | i <- iota 0 (size s)]).
-Lemma permWbsE s (t : refl) (e : bool) :
-  (\prod_(i <- s) permWb i) (t, e) = (reflconjw t s, e * odd (neq s (val t))).
+Lemma permreflbsE s (t : coxrefl) (e : bool) :
+  (\prod_(i <- s) permreflb i) (t, e) = (coxreflJw t s, e * odd (ntw s (val t))).
 Proof.
-apply/eqP; rewrite WbE; elim/last_ind: s => /= [|s sn IHs].
+apply/eqP; rewrite reflb_eqE; elim/last_ind: s => /= [|s sn IHs].
   by rewrite !big_nil perm1 conjg1 /= mulg1 !eqxx.
 rewrite -cats1 !big_cat /= !big_seq1.
-rewrite permM ![permWb sn _]permE /=.
+rewrite permM ![permreflb sn _]permE /=.
 move: IHs => /andP [/eqP-> /eqP->].
 rewrite -conjgM -mulgA eqxx /=; apply/eqP; congr (_ * _).
 (** This is the recursion of Eq (1.15). *)
@@ -508,12 +509,12 @@ by rewrite -cats1 big_cat big_seq1 /= coxwrev mulKg.
 Qed.
 *)
 
-Lemma permWb_coxrel : satisfy (coxrels_of_mat 'M) permWb.
+Lemma permreflb_coxrel : satisfy (coxrels_of_mat 'M) permreflb.
 Proof.
 apply/satisfyP=> /= [[l r] /allpairsP[[i j] /= [_ _]]].
 rewrite /coxrel; case Hm: 'M_(_) => [m|] [->{l} ->{r}]; rewrite big_nil //.
-apply/permP => [][t e]; rewrite perm1 permWbsE.
-apply/eqP; rewrite WbE => /=.
+apply/permP => [][t e]; rewrite perm1 permreflbsE.
+apply/eqP; rewrite reflb_eqE => /=.
 move/coxrelP in Hm; rewrite cox_flattennseq Hm conjg1 eqxx /=.
 rewrite -{2}(mulg1 e); apply/eqP; congr (e * _); rewrite size_flatten.
 have -> : shape (nseq m [:: i; j]) = nseq m 2 by elim: m {Hm} => //= m ->.
@@ -545,58 +546,58 @@ suff -> : X = Y by case: odd.
 rewrite {}/X {}/Y -{2}(addn0 m) iotaDl -map_comp; apply eq_map => k /=.
 by rewrite nseqD flatten_cat rcons_cat big_cat cox_flattennseq /= Hm mul1g.
 Qed.
-Definition permWbm : {morphism W >-> {perm refl * bool}} :=
-  let: exist m _ := presm_spec (coxpresP CS) permWb_coxrel in m.
-Lemma permWbmE i : permWbm 's_i = permWb i.
-Proof. by rewrite /permWbm;  case: presm_spec. Qed.
+Definition permreflbm : {morphism W >-> {perm coxrefl * bool}} :=
+  let: exist m _ := presm_spec (coxpresP CS) permreflb_coxrel in m.
+Lemma permreflbmE i : permreflbm 's_i = permreflb i.
+Proof. by rewrite /permreflbm;  case: presm_spec. Qed.
 (** This is Eq 1.16 *)
-Lemma permWbsmE s (t : refl) (e : bool) :
-  permWbm 's_[s] (t, e) = (reflconjw t s, e * odd (neq s (val t))).
+Lemma permreflbsmE s (t : coxrefl) (e : bool) :
+  permreflbm 's_[s] (t, e) = (coxreflJw t s, e * odd (ntw s (val t))).
 Proof.
 rewrite morph_prod => [|i _]; last exact: memcoxs.
-under eq_bigr do rewrite permWbmE.
-exact: permWbsE.
+under eq_bigr do rewrite permreflbmE.
+exact: permreflbsE.
 Qed.
 
-Lemma permWbm_inj : 'injm permWbm.
+Lemma permreflbm_inj : 'injm permreflbm.
 Proof.
 apply/subsetP => w; rewrite !inE => /andP[win]; apply contraLR => Hw.
 move: win Hw => /lengthP [s <-{w}] /esym/eqP.
-rewrite -reduced_lengthE => sred neq1.
-have {neq1} : size s != 0 by apply/contra: neq1 => /nilP ->; rewrite big_nil.
+rewrite -reduced_lengthE => sred ntw1.
+have {ntw1} : size s != 0 by apply/contra: ntw1 => /nilP ->; rewrite big_nil.
 rewrite -lt0n => lt0s.
-have Ht1 : tword (take 1 s) \in refls.
+have Ht1 : tword (take 1 s) \in reflexions.
   case: s lt0s {sred} => // s0 s _ /=.
   by rewrite take0 /tword /= big_seq1 coxs_refls.
-apply/negP => /eqP/permP/(_ (Refl Ht1, false)).
-rewrite perm1 permWbsmE.
-suff -> : neq s (tword (take 1 s)) = 1%N by [].
+apply/negP => /eqP/permP/(_ (CoxRefl Ht1, false)).
+rewrite perm1 permreflbsmE.
+suff -> : ntw s (tword (take 1 s)) = 1%N by [].
 rewrite (count_uniq_mem _ (reduced_tword_uniq sred)).
 by apply/eqP; rewrite eqb1; apply: map_f; rewrite mem_iota /= add0n.
 Qed.
 
-Lemma permWbm_refl (t : refl) e : permWbm t (t, e) = (t, ~~ e).
+Lemma permreflbm_coxrefl (t : coxrefl) e : permreflbm t (t, e) = (t, ~~ e).
 Proof.
-have /imset2P [i w _ /(memcoxP CS) [s <-{w} eqt]]:= reflP t.
+have /imset2P [i w _ /(memcoxP CS) [s <-{w} eqt]]:= coxreflP t.
 rewrite eqt.
 elim/last_ind: s t e eqt => [|s sn IHs] t e.
-  move=> eqt; apply/eqP; rewrite WbE /=; move: eqt.
-  rewrite big_nil conjg1 permWbmE permE /= => ->.
+  move=> eqt; apply/eqP; rewrite reflb_eqE /=; move: eqt.
+  rewrite big_nil conjg1 permreflbmE permE /= => ->.
   by rewrite conjgE mulKg eqxx /= -addbT.
 rewrite -cats1 big_cat /= conjgM conjgE big_seq1 coxsV mulgA => eqt.
 rewrite -mulgA morphM ?(groupM, groupV) // ?memcoxs ?memcoxw //.
-rewrite permWbmE !permM permE /=.
+rewrite permreflbmE !permM permE /=.
 rewrite morphM ?(groupM, groupV) // ?memcoxs ?memcoxw //.
-rewrite permWbmE !permM /= {}IHs; first last.
-  by rewrite reflconjsE eqt conjgE coxsV mulsK mulKs.
+rewrite permreflbmE !permM /= {}IHs; first last.
+  by rewrite coxreflJsE eqt conjgE coxsV mulsK mulKs.
 rewrite permE /=.
-apply/eqP; rewrite WbE /= -conjgM mulss conjg1 eqxx /=.
+apply/eqP; rewrite reflb_eqE /= -conjgM mulss conjg1 eqxx /=.
 rewrite eq_conjg coxsV conjgg -addNb -mulgA.
 by case: ('s_sn == _); rewrite mulg1.
 Qed.
 
 Lemma strong_exchange s t :
-  t \in refls -> length (t * 's_[s]) < length 's_[s] ->
+  t \in reflexions -> length (t * 's_[s]) < length 's_[s] ->
   exists2 i, i < size s & t * 's_[s] = 's_[take i s ++ drop i.+1 s].
 Proof.
 Admitted.
