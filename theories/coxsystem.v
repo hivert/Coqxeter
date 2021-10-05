@@ -1,5 +1,22 @@
-From mathcomp Require Import all_ssreflect.
-From mathcomp Require Import all_fingroup alt.
+(** * Coxeter system *)
+(******************************************************************************)
+(*      Copyright (C) 2021      Florent Hivert <florent.hivert@lri.fr>        *)
+(*                                                                            *)
+(*  Distributed under the terms of the GNU General Public License (GPL)       *)
+(*                                                                            *)
+(*    This code is distributed in the hope that it will be useful,            *)
+(*    but WITHOUT ANY WARRANTY; without even the implied warranty of          *)
+(*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *)
+(*    General Public License for more details.                                *)
+(*                                                                            *)
+(*  The full text of the GPL is available at:                                 *)
+(*                                                                            *)
+(*                  http://www.gnu.org/licenses/                              *)
+(******************************************************************************)
+Require Import mathcomp.ssreflect.ssreflect.
+From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq.
+From mathcomp Require Import choice fintype finset finfun order fingraph.
+From mathcomp Require Import tuple bigop fingroup perm morphism alt.
 Require Import natbar present.
 
 

@@ -1,3 +1,4 @@
+(** * Integer with infinity *)
 (******************************************************************************)
 (*       Copyright (C) 2019-2021 Florent Hivert <florent.hivert@lri.fr>       *)
 (*                                                                            *)
@@ -12,8 +13,9 @@
 (*                                                                            *)
 (*                  http://www.gnu.org/licenses/                              *)
 (******************************************************************************)
-From mathcomp Require Import all_ssreflect.
-From mathcomp Require Import order.
+Require Import mathcomp.ssreflect.ssreflect.
+From mathcomp Require Import ssrbool ssrfun ssrnat eqtype fintype choice.
+From mathcomp Require Import order bigop.
 
 
 Set Implicit Arguments.
@@ -24,15 +26,12 @@ Import Order.Syntax.
 Import Order.TTheory.
 
 
-
-(** Clone of option nat to avoid the very confusing chain of coercions *)
-(**   option -> bool -> nat                                            *)
-
 Section NatBar.
 
 Open Scope order_scope.
 
-
+(** Clone of option nat to avoid the very confusing chain of coercions *)
+(**   option -> bool -> nat                                            *)
 Inductive natbar : Set :=  Nat of nat | Inf.
 Definition opt_natbar (v : natbar) : option nat :=
   if v is Nat n then Some n else None.
