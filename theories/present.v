@@ -285,7 +285,7 @@ Section PresTriv.
 
 Variable (gT : finGroupType).
 
-Lemma pres_trivG : (fun _ : 'I_0 => 1, [::]) \present [1 gT].
+Lemma present_trivG : (fun _ : 'I_0 => 1, [::]) \present [1 gT].
 Proof.
 constructor => //=.
 - rewrite -gen0; congr << _ >>; apply/setP => x; rewrite inE.
@@ -301,9 +301,8 @@ End PresTriv.
 
 Section PresBool.
 
-Lemma pres_bool :
-  (fun _ : 'I_1 => true, [:: ([:: ord0; ord0], [::])])
-    \present [group of [set: bool]].
+Lemma present_bool :
+  (fun _ : 'I_1 => true, [:: ([:: ord0; ord0], [::])]) \present [set: bool].
 Proof.
 have trin : true \in [set true | _ : 'I_1] by apply/imsetP; exists ord0.
 constructor => /=.
