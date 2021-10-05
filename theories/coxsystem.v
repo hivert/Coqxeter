@@ -15,6 +15,19 @@ Local Reserved Notation "''s_' [ w ] "
 Local Reserved Notation "''M_' p" (at level 2, format "''M_' p").
 
 
+Section GroupCompl.
+
+Variables (gT : finGroupType) (W : {group gT}).
+
+Lemma conjgg (x : gT) : x ^ x = x.
+Proof. by rewrite conjgE mulKg. Qed.
+
+Lemma eq_conjg (x y z : gT) : (x == y ^ z) = (x ^ (z^-1) == y).
+Proof. by rewrite -(inj_eq (conjg_inj z ^-1)) -conjgM mulgV conjg1. Qed.
+
+End GroupCompl.
+
+
 Section CoxeterMatrix.
 Context {I : finType}.
 
@@ -424,8 +437,7 @@ Lemma actWbK i : involutive (actWb i).
 Proof.
 move=> /= [t e] /=; congr (_, _).
   by apply val_inj; rewrite /= -conjgM mulss conjg1.
-rewrite -['s_i == t ^ 's_i](inj_eq (conjg_inj 's_i)).
-rewrite conjgE mulKg -conjgM mulss conjg1 -mulgA.
+rewrite eq_conjg coxsV conjgg -mulgA.
 by case: eqP => _; rewrite mulg1.
 Qed.
 Definition permWb i : {perm refl * bool} := perm (can_inj (actWbK i)).
@@ -453,8 +465,7 @@ rewrite oddD /= addn0 oddb; congr (odd (count_mem (val t) _) * _).
   by rewrite takes.
 rewrite -(size_rcons s sn) take_size /tword rev_rcons /=.
 rewrite -cats1 !big_cat big_seq1 /= coxwrev.
-rewrite -[LHS](inj_eq (conjg_inj 's_[s]^-1)).
-by rewrite -conjgM mulgV conjg1 conjgE invgK mulgA.
+by rewrite eq_conjg conjgE invgK mulgA.
 Qed.
 
 (** TODO: Is this still useful ?
@@ -563,8 +574,7 @@ rewrite permWbmE !permM /= {}IHs; first last.
   by rewrite reflconjsE eqt conjgE coxsV mulsK mulKs.
 rewrite permE /=.
 apply/eqP; rewrite WbE /= -conjgM mulss conjg1 eqxx /=.
-rewrite -['s_sn == _](inj_eq (conjg_inj 's_sn)).
-rewrite conjgE mulss coxsV mulg1 -addNb -mulgA.
+rewrite eq_conjg coxsV conjgg -addNb -mulgA.
 by case: ('s_sn == _); rewrite mulg1.
 Qed.
 
