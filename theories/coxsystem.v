@@ -16,7 +16,7 @@
 Require Import mathcomp.ssreflect.ssreflect.
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq.
 From mathcomp Require Import choice fintype finset finfun order fingraph.
-From mathcomp Require Import tuple bigop fingroup perm morphism alt.
+From mathcomp Require Import tuple bigop fingroup perm morphism alt gproduct.
 Require Import natbar present.
 
 
@@ -126,46 +126,6 @@ Notation "{ 'coxgrp' gT }" := (coxgrp_of (Phant gT))
 Notation "[ 'coxgrp' 'of' G ]" := (clone_coxgrp (@coxgrp _ G))
   (at level 0, format "[ 'coxgrp'  'of'  G ]") : form_scope.
 Notation coxsys G := (coxsys_of (clone_coxgrp (@coxgrp _ G))).
-
-
-Section Example.
-
-Variables (gT : finGroupType).
-
-Definition set1_coxmat := fun _ : 'I_0 * 'I_0 => Inf.
-Definition set1_coxgen := fun _ : 'I_0 => 1 : gT.
-Lemma set1_coxmatP : set1_coxmat \is a Coxeter_matrix.
-Proof. by apply/Coxeter_matrixP; split => [][]. Qed.
-Lemma set1_present :
-  (set1_coxgen, coxrels_of_mat set1_coxmat) \present [1 gT].
-Proof.
-have nbrel : size (coxrels_of_mat set1_coxmat) = 0.
-  by rewrite size_allpairs size_enum_ord muln0.
-suff -> : coxrels_of_mat set1_coxmat = [::] by exact: present_trivG.
-by apply/nilP; rewrite /nilp nbrel.
-Qed.
-Canonical set1_coxsys := CoxGrp (CoxSys set1_coxmatP set1_present).
-
-End Example.
-
-Definition bool_coxmat := fun _ : 'I_1 * 'I_1 => Nat 1.
-Definition bool_coxgen := fun _ : 'I_1 => true.
-Lemma bool_coxmatP : bool_coxmat \is a Coxeter_matrix.
-Proof. by apply/Coxeter_matrixP; split => [][[|]// H1][[|]]. Qed.
-Lemma bool_present :
-  (bool_coxgen, coxrels_of_mat bool_coxmat) \present [group of [set: bool]].
-Proof.
-have nbrel : size (coxrels_of_mat bool_coxmat) = 1%N.
-  by rewrite size_allpairs size_enum_ord muln1.
-suff -> : coxrels_of_mat bool_coxmat = [:: ([:: ord0; ord0], [::])]
-    by exact: present_bool.
-apply (eq_from_nth (x0 := ([::], [::]))); rewrite nbrel // => [][|]// _.
-rewrite /= /coxrels_of_mat.
-suff -> : enum (ordinal_finType 1) = [:: ord0] by rewrite allpairs1l /=.
-apply (eq_from_nth (x0 := ord0)); rewrite size_enum_ord // => i _.
-by rewrite !ord1.
-Qed.
-Canonical bool_coxsys := CoxGrp (CoxSys bool_coxmatP bool_present).
 
 Notation "''I[' g ]" := (@coxind _ _ (coxsys g)).
 Notation "''S[' g ]" := (@coxgen _ _ (coxsys g)).
@@ -679,3 +639,140 @@ Proof.
 Admitted.
 
 End Reflections.
+
+
+(** * Example of Coxeter groups *)
+Section Triv.
+
+Variables (gT : finGroupType).
+
+Definition set1_coxmat := fun _ : 'I_0 * 'I_0 => Inf.
+Definition set1_coxgen := fun _ : 'I_0 => 1 : gT.
+Lemma set1_coxmatP : set1_coxmat \is a Coxeter_matrix.
+Proof. by apply/Coxeter_matrixP; split => [][]. Qed.
+Lemma set1_present :
+  (set1_coxgen, coxrels_of_mat set1_coxmat) \present [1 gT].
+Proof.
+have nbrel : size (coxrels_of_mat set1_coxmat) = 0.
+  by rewrite size_allpairs size_enum_ord muln0.
+suff -> : coxrels_of_mat set1_coxmat = [::] by exact: present_trivG.
+by apply/nilP; rewrite /nilp nbrel.
+Qed.
+Canonical set1_coxsys := CoxGrp (CoxSys set1_coxmatP set1_present).
+
+End Triv.
+
+Definition bool_coxmat := fun _ : 'I_1 * 'I_1 => Nat 1.
+Definition bool_coxgen := fun _ : 'I_1 => true.
+Lemma bool_coxmatP : bool_coxmat \is a Coxeter_matrix.
+Proof. by apply/Coxeter_matrixP; split => [][[|]// H1][[|]]. Qed.
+Lemma bool_present :
+  (bool_coxgen, coxrels_of_mat bool_coxmat) \present [set: bool].
+Proof.
+have nbrel : size (coxrels_of_mat bool_coxmat) = 1%N.
+  by rewrite size_allpairs size_enum_ord muln1.
+suff -> : coxrels_of_mat bool_coxmat = [:: ([:: ord0; ord0], [::])]
+    by exact: present_bool.
+apply (eq_from_nth (x0 := ([::], [::]))); rewrite nbrel // => [][|]// _.
+rewrite /= /coxrels_of_mat.
+suff -> : enum (ordinal_finType 1) = [:: ord0] by rewrite allpairs1l /=.
+apply (eq_from_nth (x0 := ord0)); rewrite size_enum_ord // => i _.
+by rewrite !ord1.
+Qed.
+Canonical bool_coxsys := CoxGrp (CoxSys bool_coxmatP bool_present).
+
+
+Section Products.
+
+Variables (gT : finGroupType) (A B G : {coxgrp gT}).
+Hypothesis (eqG : A \x B = G).
+
+Definition dprod_coxmat :=
+  fun (p : ('I[A] + 'I[B]) * ('I[A] + 'I[B])) =>
+    match p with
+    | (inl i, inl j) | (inr i, inr j) => 'M_(i, j)
+    | _ => Nat 2
+    end.
+Definition dprod_coxgen (k : 'I[A] + 'I[B]) :=
+  match k with | inl i | inr i => 's_i end.
+
+Lemma dprod_coxmatP : dprod_coxmat \is a Coxeter_matrix.
+Proof.
+have /Coxeter_matrixP [A1 AD AS]:= coxmatP A.
+have /Coxeter_matrixP [B1 BD BS]:= coxmatP B.
+rewrite /dprod_coxmat; apply/Coxeter_matrixP.
+by split => [][a1|b1][a2|b2]; rewrite -?AD -?BD.
+Qed.
+Lemma dprod_present : (dprod_coxgen, coxrels_of_mat dprod_coxmat) \present G.
+Proof.
+move: eqG => /dprodP [_ eqGAB ABC _].
+have [/= eqA /satisfyP/= satA morphA] := coxpresP A.
+have [/= eqB /satisfyP/= satB morphB] := coxpresP B.
+constructor => /=.
+- move=> {satA morphA satB morphB}.
+  apply/eqP; rewrite eqEsubset; apply/andP; split.
+  + rewrite gen_subG; apply/subsetP => i /imsetP[x _ ->{i} /=].
+    rewrite /dprod_coxgen; case: x => [a|b]; rewrite -eqGAB.
+    * by rewrite -(mulg1 's_a); apply: mem_mulg.
+    * by rewrite -(mul1g 's_b); apply: mem_mulg.
+  + rewrite -eqGAB mulG_subG -eqA -eqB; apply/andP.
+    by split; apply/genS/subsetP=> x /imsetP[i _ ->{x}];
+      apply/imsetP; [exists (inl i)| exists (inr i)].
+- move=> {eqA morphA eqB morphB}.
+  apply/satisfyP => /= [][lft rgt].
+  move/allpairsP=> [][]/=[a1|b1][a2|b2][_ _][-> ->]; rewrite big_nil.
+  + case eqM : 'M__ => [n|]; last by rewrite big_nil.
+    rewrite /coxrel -/[seq inl i | i <- [:: a1; a2]] -map_nseq.
+    by rewrite -map_flatten big_map /dprod_coxgen cox_flattennseq coxrelP.
+  + rewrite !big_cons !big_nil mulg1 /dprod_coxgen !mulgA.
+    move/subsetP/(_ _ (memcoxs b2))/centP : ABC.
+    by move=> /(_ _ (memcoxs a1)) <-; rewrite mulsK mulss.
+  + rewrite !big_cons !big_nil mulg1 /dprod_coxgen !mulgA.
+    move/subsetP/(_ _ (memcoxs b1))/centP : ABC.
+    by move=> /(_ _ (memcoxs a2)) ->; rewrite mulsK mulss.
+  + case eqM : 'M__ => [n|]; last by rewrite big_nil.
+    rewrite /coxrel -/[seq inr i | i <- [:: b1; b2]] -map_nseq.
+    by rewrite -map_flatten big_map /dprod_coxgen cox_flattennseq coxrelP.
+- move=> {satA satB} Ht gensH /satisfyP /= Hsat.
+  have {}/morphA[fA eq_fA] :
+       satisfy (coxrels_of_mat 'M) (fun i => gensH (inl i)).
+    apply/satisfyP=> /= [[lft rgt] /allpairsP [[a b]/= [_ _][->{lft}->{rgt}]]].
+    suff /Hsat/= : (map inl (coxrel a b 'M_(a, b)), [::])
+                   \in coxrels_of_mat dprod_coxmat.
+      by rewrite !big_nil big_map.
+    apply/allpairsP; exists (inl a, inl b); split; try exact :mem_enum.
+    rewrite /= /dprod_coxmat; case: 'M__ => [n|] //.
+    by rewrite /coxrel map_flatten map_nseq /=.
+  have {}/morphB[fB eq_fB] :
+      satisfy (coxrels_of_mat 'M) (fun i => gensH (inr i)).
+    apply/satisfyP=> /= [[lft rgt] /allpairsP [[a b]/= [_ _][->{lft}->{rgt}]]].
+    suff /Hsat/= : (map inr (coxrel a b 'M_(a, b)), [::])
+                   \in coxrels_of_mat dprod_coxmat.
+      by rewrite !big_nil big_map.
+    apply/allpairsP; exists (inr a, inr b); split; try exact :mem_enum.
+    rewrite /= /dprod_coxmat; case: 'M__ => [n|] //.
+    by rewrite /coxrel map_flatten map_nseq /=.
+  suff cAB : fB @* B \subset 'C(fA @* A).
+    exists [morphism of dprodm eqG cAB] => [[a|b]] /=.
+    + by rewrite dprodmEl // memcoxs.
+    + by rewrite dprodmEr // memcoxs.
+  rewrite -[X in fA @* X]eqA -[X in fB @* X]eqB.
+  rewrite !morphim_gen; first last.
+    + by apply/subsetP => x /imsetP[a _ ->]; apply memcoxs.
+    + by apply/subsetP => x /imsetP[b _ ->]; apply memcoxs.
+  rewrite gen_subG /= cent_gen; apply/subsetP => /= x /imsetP[y].
+  rewrite inE => /andP[_ /imsetP[b _ ->{y} ->{x}]].
+  apply/centP => x /imsetP[y].
+  rewrite inE => /andP[_ /imsetP[a _ ->{y} ->{x}]].
+  rewrite /commute.
+  have /Hsat : (coxrel (inr b) (inl a) (dprod_coxmat (inr b, inl a)), [::])
+           \in coxrels_of_mat dprod_coxmat.
+    by apply: allpairs_f; rewrite mem_enum.
+  rewrite /dprod_coxmat /= /coxrels_of_mat !big_cons !big_nil mulg1 !mulgA.
+  rewrite -{}eq_fA -{}eq_fB => /(congr1 (mulg (fA 's_a * fB 's_b))).
+  rewrite mulg1 !mulgA -[_ * fB 's_b * fB 's_b]mulgA.
+  by do 2 rewrite -morphM ?memcoxs // mulss morph1 ?mulg1 ?mul1g.
+Qed.
+Definition dprod_coxsys := CoxGrp (CoxSys dprod_coxmatP dprod_present).
+
+End Products.
