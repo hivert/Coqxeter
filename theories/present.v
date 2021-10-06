@@ -192,6 +192,32 @@ Qed.
 
 End PresMorphism.
 
+
+Section InjMorphism.
+
+Variables (hT: finGroupType) (f : {morphism G >-> hT}).
+Hypothesis (inj_f : 'injm f).
+
+Lemma morph_present : (f \o gens, rels) \present (f @* G).
+Proof.
+have [/= eqG /satisfyP/= satG morphG] := prG.
+have gsub : [set gens i | i : I] \subset G by rewrite -eqG subset_gen.
+have gin i : gens i \in G by rewrite -eqG mem_gen // imset_f.
+constructor => /=.
+- move=> {satG morphG}.
+  rewrite -[X in f @* X]eqG morphim_gen -?eqG ?subset_gen // /morphim.
+  by rewrite (setIidPr gsub) -imset_comp /=.
+- move=> {morphG}.
+  apply/satisfyP => /= [][lft rgt] /= {}/satG /=.
+  by rewrite -!morph_prod // => ->.
+- move=> {satG} Ht gensH {}/morphG [fG eq_fG].
+  have phi_morph : {in f @* G & , {morph fG \o invm inj_f : x y / x * y}}.
+    by rewrite -morphpre_invm => x y xin yin; rewrite !morphM.
+  by exists (Morphism phi_morph) => i /=; rewrite invmE.
+Qed.
+
+End InjMorphism.
+
 End Presentation.
 
 

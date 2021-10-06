@@ -658,7 +658,7 @@ have nbrel : size (coxrels_of_mat set1_coxmat) = 0.
 suff -> : coxrels_of_mat set1_coxmat = [::] by exact: present_trivG.
 by apply/nilP; rewrite /nilp nbrel.
 Qed.
-Canonical set1_coxsys := CoxGrp (CoxSys set1_coxmatP set1_present).
+Canonical set1_coxgrp := CoxGrp (CoxSys set1_coxmatP set1_present).
 
 End Triv.
 
@@ -679,7 +679,7 @@ suff -> : enum (ordinal_finType 1) = [:: ord0] by rewrite allpairs1l /=.
 apply (eq_from_nth (x0 := ord0)); rewrite size_enum_ord // => i _.
 by rewrite !ord1.
 Qed.
-Canonical bool_coxsys := CoxGrp (CoxSys bool_coxmatP bool_present).
+Canonical bool_coxgrp := CoxGrp (CoxSys bool_coxmatP bool_present).
 
 
 Section Products.
@@ -767,12 +767,25 @@ constructor => /=.
   rewrite /commute.
   have /Hsat : (coxrel (inr b) (inl a) (dprod_coxmat (inr b, inl a)), [::])
            \in coxrels_of_mat dprod_coxmat.
-    by apply: allpairs_f; rewrite mem_enum.
+    exact/allpairs_f/mem_enum/mem_enum.
   rewrite /dprod_coxmat /= /coxrels_of_mat !big_cons !big_nil mulg1 !mulgA.
   rewrite -{}eq_fA -{}eq_fB => /(congr1 (mulg (fA 's_a * fB 's_b))).
   rewrite mulg1 !mulgA -[_ * fB 's_b * fB 's_b]mulgA.
   by do 2 rewrite -morphM ?memcoxs // mulss morph1 ?mulg1 ?mul1g.
 Qed.
-Definition dprod_coxsys := CoxGrp (CoxSys dprod_coxmatP dprod_present).
+Definition dprod_coxgrp := CoxGrp (CoxSys dprod_coxmatP dprod_present).
 
 End Products.
+
+
+Section Morph.
+
+Variables (gT hT: finGroupType) (W : {coxgrp gT}).
+Variable (f : {morphism W >-> hT}).
+Hypothesis (inj_f : 'injm f).
+
+Lemma morph_present : (f \o 'S[W], coxrels_of_mat 'M[W]) \present (f @* W).
+Proof. exact: (morph_present (coxpresP W) inj_f). Qed.
+Canonical morph_coxgrp := CoxGrp (CoxSys (coxmatP W) morph_present).
+
+End Morph.
