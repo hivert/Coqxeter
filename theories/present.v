@@ -27,6 +27,37 @@ Import GroupScope.
 
 Reserved Notation "gr \present G" (at level 10).
 
+
+Section ImsetFix.
+
+Variables aT aT2 rT : finType.
+Implicit Types (f g : aT -> rT) (D : {pred aT}) (R : {pred rT}).
+
+Lemma eq_preimset f g R : f =1 g -> f @^-1: R = g @^-1: R.
+Proof. by move=> eqfg; apply/setP => y; rewrite !inE eqfg. Qed.
+
+Lemma eq_imset f g D : f =1 g -> f @: D = g @: D.
+Proof.
+move=> eqfg; apply/setP=> y.
+by apply/imsetP/imsetP=> [] [x Dx ->]; exists x; rewrite ?eqfg.
+Qed.
+
+Lemma eq_in_imset f g D : {in D, f =1 g} -> f @: D = g @: D.
+Proof.
+move=> eqfg; apply/setP => y.
+by apply/imsetP/imsetP=> [] [x Dx ->]; exists x; rewrite ?eqfg.
+Qed.
+
+Lemma eq_in_imset2 (f g : aT -> aT2 -> rT) (D : {pred aT}) (D2 : {pred aT2}) :
+  {in D & D2, f =2 g} -> f @2: (D, D2) = g @2: (D, D2).
+Proof.
+move=> eqfg; apply/setP => y.
+by apply/imset2P/imset2P=> [] [x x2 Dx Dx2 ->]; exists x x2; rewrite ?eqfg.
+Qed.
+
+End ImsetFix.
+
+
 Section Satisfy.
 
 Variable (gT : finGroupType) (I : finType).
@@ -174,20 +205,12 @@ Qed.
 
 Lemma morphim_presm : presm @* G = <<[set gensH i | i : I]>>.
 Proof.
-apply/setP => /= h; apply/imsetP/gen_prodgP; rewrite setIid.
-- move=> [g /(presP) [l [dec ->{g} ->{h}]]]; exists l.
-  exists (gensH \o dec); first by move=> i /=; apply: imset_f.
-  rewrite morph_prod //.
-  by apply: eq_bigr => /= i _; rewrite presmP.
-- move=> [l [dec Hdec ->{h}]].
-  have {}Hdec i : {j : I | dec i == gensH j}.
-    by apply sigW => /=; move: Hdec => /(_ i) /imsetP [/= j _ ->]; exists j.
-  pose get_gen (i : 'I_l) := let: exist j _ := Hdec i in gens j.
-  have get_in i : get_gen i \in G by rewrite /get_gen; case: (Hdec i).
-  have getE i : dec i = presm (get_gen i).
-    by rewrite /get_gen; case: (Hdec i) => j /eqP ->; rewrite presmP.
-  exists (\prod_(i < l) get_gen i); first by apply: group_prod => /= i _.
-  by rewrite morph_prod //; apply eq_bigr => /= i _.
+have [/= eqG /satisfyP/= satG morphG] := prG.
+have gsub : [set gens i | i : I] \subset G by rewrite -eqG subset_gen.
+have gin i : gens i \in G by rewrite -eqG mem_gen // imset_f.
+rewrite -[X in presm @* X]eqG morphim_gen -?eqG ?subset_gen // /morphim.
+rewrite (setIidPr _) // -imset_comp; congr <<_>>.
+by apply: eq_imset => i /=; rewrite presmP.
 Qed.
 
 End PresMorphism.
