@@ -161,13 +161,13 @@ Lemma coxw1 i : 's_[[:: i]] = 's_i.
 Proof. by rewrite big_seq1. Qed.
 
 Lemma memcoxs i : 's_i \in W.
-Proof. by have [<- _ _] := coxpresP; exact/mem_gen/imset_f. Qed.
+Proof. by rewrite (present_gen coxpresP) mem_gen // imset_f. Qed.
 Lemma memcoxw s : 's_[s] \in W.
 Proof. by apply group_prod => i _; apply memcoxs. Qed.
 
 Lemma memcoxP w : reflect (exists s, 's_[s] = w) (w \in W).
 Proof.
-have [<- _ _] /= := coxpresP.
+rewrite (present_gen coxpresP).
 apply (iffP gen_prodgP) => [[n [f Hf ->{w}]] | [s <-{w}]].
 - have getg j : {h | f j == 's[W]_h}.
     by apply sigW; move/(_ j) : Hf => /imsetP[k _ ->]; exists k.
@@ -706,20 +706,17 @@ Qed.
 Lemma dprod_present : (dprod_coxgen, coxrels_of_mat dprod_coxmat) \present G.
 Proof.
 move: eqG => /dprodP [_ eqGAB ABC _].
-have [/= eqA /satisfyP/= satA morphA] := coxpresP A.
-have [/= eqB /satisfyP/= satB morphB] := coxpresP B.
+have prA := coxpresP A; have prB := coxpresP B.
 constructor => /=.
-- move=> {satA morphA satB morphB}.
-  apply/eqP; rewrite eqEsubset; apply/andP; split.
+- apply/eqP; rewrite eqEsubset; apply/andP; split.
+  + rewrite -eqGAB mulG_subG (present_gen prA) (present_gen prB); apply/andP.
+    by split; apply/genS/subsetP=> x /imsetP[i _ ->{x}];
+      apply/imsetP; [exists (inl i)| exists (inr i)].
   + rewrite gen_subG; apply/subsetP => i /imsetP[x _ ->{i} /=].
     rewrite /dprod_coxgen; case: x => [a|b]; rewrite -eqGAB.
     * by rewrite -(mulg1 's_a); apply: mem_mulg.
     * by rewrite -(mul1g 's_b); apply: mem_mulg.
-  + rewrite -eqGAB mulG_subG -eqA -eqB; apply/andP.
-    by split; apply/genS/subsetP=> x /imsetP[i _ ->{x}];
-      apply/imsetP; [exists (inl i)| exists (inr i)].
-- move=> {eqA morphA eqB morphB}.
-  apply/satisfyP => /= [][lft rgt].
+- apply/satisfyP => /= [][lft rgt].
   move/allpairsP=> [][]/=[a1|b1][a2|b2][_ _][-> ->]; rewrite big_nil.
   + case eqM : 'M__ => [n|]; last by rewrite big_nil.
     rewrite /coxrel -/[seq inl i | i <- [:: a1; a2]] -map_nseq.
@@ -733,9 +730,8 @@ constructor => /=.
   + case eqM : 'M__ => [n|]; last by rewrite big_nil.
     rewrite /coxrel -/[seq inr i | i <- [:: b1; b2]] -map_nseq.
     by rewrite -map_flatten big_map /dprod_coxgen cox_flattennseq coxrelP.
-- move=> {satA satB} Ht gensH /satisfyP /= Hsat.
-  have {}/morphA[fA eq_fA] :
-       satisfy (coxrels_of_mat 'M) (fun i => gensH (inl i)).
+- move=> Ht gensH /satisfyP /= Hsat.
+  have satA : satisfy (coxrels_of_mat 'M) (fun i => gensH (inl i)).
     apply/satisfyP=> /= [[lft rgt] /allpairsP [[a b]/= [_ _][->{lft}->{rgt}]]].
     suff /Hsat/= : (map inl (coxrel a b 'M_(a, b)), [::])
                    \in coxrels_of_mat dprod_coxmat.
@@ -743,8 +739,8 @@ constructor => /=.
     apply/allpairsP; exists (inl a, inl b); split; try exact :mem_enum.
     rewrite /= /dprod_coxmat; case: 'M__ => [n|] //.
     by rewrite /coxrel map_flatten map_nseq /=.
-  have {}/morphB[fB eq_fB] :
-      satisfy (coxrels_of_mat 'M) (fun i => gensH (inr i)).
+  move: (presm _ _) (presmP prA satA) => {satA} fA eq_fA.
+  have satB : satisfy (coxrels_of_mat 'M) (fun i => gensH (inr i)).
     apply/satisfyP=> /= [[lft rgt] /allpairsP [[a b]/= [_ _][->{lft}->{rgt}]]].
     suff /Hsat/= : (map inr (coxrel a b 'M_(a, b)), [::])
                    \in coxrels_of_mat dprod_coxmat.
@@ -752,11 +748,12 @@ constructor => /=.
     apply/allpairsP; exists (inr a, inr b); split; try exact :mem_enum.
     rewrite /= /dprod_coxmat; case: 'M__ => [n|] //.
     by rewrite /coxrel map_flatten map_nseq /=.
+  move: (presm _ _) (presmP prB satB) => {satB} fB eq_fB.
   suff cAB : fB @* B \subset 'C(fA @* A).
     exists [morphism of dprodm eqG cAB] => [[a|b]] /=.
     + by rewrite dprodmEl // memcoxs.
     + by rewrite dprodmEr // memcoxs.
-  rewrite -[X in fA @* X]eqA -[X in fB @* X]eqB.
+  rewrite [X in fA @* X](present_gen prA) [X in fB @* X](present_gen prB).
   rewrite !morphim_gen; first last.
     + by apply/subsetP => x /imsetP[a _ ->]; apply memcoxs.
     + by apply/subsetP => x /imsetP[b _ ->]; apply memcoxs.

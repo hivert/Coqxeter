@@ -101,17 +101,15 @@ move=> memgens /satisfyP /= sat; apply/satisfyP => s {}/sat /(congr1 f).
 by rewrite !morph_prod.
 Qed.
 
-
-
-Record presentation_of (gT : finGroupType)
+Inductive presentation_of (gT : finGroupType)
        (I : finType) (gr : (I -> gT) * (seq (seq I * seq I)))
-       (G : {group gT}) (ph : phantom {set gT} G) : Prop := Presentation {
-  gen_eq : <<[set gr.1 i | i : I]>> = G;
-  satisfy_gens : satisfy gr.2 gr.1;
-  presm_ex : forall (hT : finGroupType) (gensH : I -> hT),
-      satisfy gr.2 gensH ->
-      exists presm : {morphism G >-> hT}, forall i, presm (gr.1 i) = gensH i
-}.
+       (G : {group gT}) (ph : phantom {set gT} G) : Prop :=
+  Presentation of
+    (G = <<[set gr.1 i | i : I]>> :> {set gT}) &
+    (satisfy gr.2 gr.1) &
+    (forall (hT : finGroupType) (gensH : I -> hT),
+        satisfy gr.2 gensH ->
+        exists presm : {morphism G >-> hT}, forall i, presm (gr.1 i) = gensH i).
 
 Notation "gr \present G" := (presentation_of gr (Phantom {set _} G)).
 
@@ -122,24 +120,25 @@ Variables (gT : finGroupType) (G : {group gT})
           (I : finType) (gens  : I -> gT) (rels  : seq (seq I * seq I)).
 Hypothesis prG : (gens, rels) \present G.
 
+Lemma present_gen : G = <<[set gens i | i : I]>> :> {set gT}.
+Proof. by case: prG. Qed.
+Lemma present_sat : satisfy rels gens.
+Proof. by case: prG. Qed.
 Lemma present_mem  i : gens i \in G.
-Proof.
-case: prG => [eqG /= _ _]; rewrite -{}eqG.
-exact/mem_gen/imset_f.
-Qed.
+Proof. by rewrite present_gen mem_gen // imset_f. Qed.
 Hint Resolve present_mem : core.
 
 Lemma presentP x :
   reflect (exists l (c : 'I_l -> I), x = \prod_i gens (c i)) (x \in G).
 Proof.
 apply (iffP idP); last by move=> [l [dec ->{x}]]; apply group_prod.
-rewrite -{1}(gen_eq prG) => /gen_prodgP [l [dec Hdec ->{x}]].
-have {}Hdec i : {j : I | dec i == gens j}.
-  by apply sigW => /=; move: Hdec => /(_ i) /imsetP [/= j _ ->]; exists j.
-have dec_in i : dec i \in G by case: (Hdec i) => j /eqP ->.
-pose get_gen (i : 'I_l) := let: exist j _ := Hdec i in j.
-have decE i : dec i = gens (get_gen i).
-  by rewrite /get_gen; case: (Hdec i) => j /eqP.
+rewrite present_gen => /gen_prodgP [l [gen Hgen ->{x}]].
+have {}Hgen i : {j : I | gen i == gens j}.
+  by apply sigW => /=; move: Hgen => /(_ i) /imsetP [/= j _ ->]; exists j.
+have dec_in i : gen i \in G by case: (Hgen i) => j /eqP ->.
+pose get_gen (i : 'I_l) := let: exist j _ := Hgen i in j.
+have decE i : gen i = gens (get_gen i).
+  by rewrite /get_gen; case: (Hgen i) => j /eqP.
 by exists l, get_gen; apply eq_bigr.
 Qed.
 
@@ -155,7 +154,7 @@ Proof.
 suff : {m : {ffun gT -> hT} | morphic G m && [forall i, m (gens i) == gensH i]}.
   move=> [m /andP [morm /forallP /= Heq]].
   by exists (morphm_morphism morm) => /= i; rewrite morphmE; apply/eqP.
-apply sigW; case: (presm_ex prG sat) => [m Heq] /=.
+apply sigW; case: prG => [_ _ /(_ _ _ sat)] [m Heq] /=.
 exists (finfun m); apply/andP; split.
   by apply/morphicP => x y xG yG /=; rewrite !ffunE morphM.
 by apply/forallP => /= i; rewrite ffunE Heq.
@@ -174,11 +173,9 @@ Qed.
 
 Lemma morphim_presm : presm @* G = <<[set gensH i | i : I]>>.
 Proof.
-have [/= eqG /satisfyP/= satG morphG] := prG.
-have gsub : [set gens i | i : I] \subset G by rewrite -eqG subset_gen.
-have gin i : gens i \in G by rewrite -eqG mem_gen // imset_f.
-rewrite -[X in presm @* X]eqG morphim_gen -?eqG ?subset_gen // /morphim.
-rewrite (setIidPr _) // -imset_comp; congr <<_>>.
+have gsub : [set gens i | i : I] \subset G by rewrite present_gen subset_gen.
+rewrite [X in presm @* X]present_gen (morphim_gen _ gsub).
+rewrite /morphim (setIidPr gsub) -imset_comp; congr <<_>>.
 by apply: eq_imset => i /=; rewrite presmP.
 Qed.
 
@@ -193,11 +190,11 @@ Hypothesis (inj_f : 'injm f).
 Lemma morph_present : (f \o gens, rels) \present (f @* G).
 Proof.
 have [/= eqG /satisfyP/= satG morphG] := prG.
-have gsub : [set gens i | i : I] \subset G by rewrite -eqG subset_gen.
-have gin i : gens i \in G by rewrite -eqG mem_gen // imset_f.
+have gsub : [set gens i | i : I] \subset G by rewrite eqG subset_gen.
+have gin i : gens i \in G by rewrite eqG mem_gen // imset_f.
 constructor => /=.
 - move=> {satG morphG}.
-  rewrite -[X in f @* X]eqG morphim_gen -?eqG ?subset_gen // /morphim.
+  rewrite [X in f @* X]eqG (morphim_gen _ gsub) /morphim.
   by rewrite (setIidPr gsub) -imset_comp /=.
 - move=> {morphG}.
   apply/satisfyP => /= [][lft rgt] /= {}/satG /=.
@@ -224,15 +221,15 @@ Lemma present_perm (p : {perm I}) :
    [seq ([seq p^-1 i | i <- r.1], [seq p^-1 i | i <- r.2]) | r <- rels])
     \present G.
 Proof.
-move=> prG; constructor.
-- rewrite -(gen_eq prG) /=; congr << _ >>.
+move=> prG; constructor => /=.
+- rewrite (present_gen prG); congr <<_>>.
   apply/setP => x; apply/imsetP/imsetP => [] [/= y _ ->{x}].
-  + by exists (p y).
   + by exists (p^-1 y) => //; rewrite permKV.
-- by apply satisfy_perm_impl; apply: satisfy_gens prG.
+  + by exists (p y).
+- exact/satisfy_perm_impl/(present_sat prG).
 - move=> ht gensH.
-  have /satisfy_eq -> : gensH =1 ((gensH \o p^-1) \o p).
-    by  move=> x; rewrite /= permK.
+  have /satisfy_eq -> : gensH =1 (gensH \o p^-1 \o p).
+    by move=> x; rewrite /= permK.
   rewrite satisfy_perm => satH; exists (presm prG satH) => i.
   by rewrite presmP /= permK.
 Qed.
@@ -256,15 +253,14 @@ Qed.
 Lemma present_isog (gh : I -> hT) : (gh, rels) \present H -> G \isog H.
 Proof.
 move=> prH; apply/isogP.
-have satH := satisfy_gens prH.
-have satG := satisfy_gens prG.
-have:= morphim_presm prG satH; rewrite (gen_eq prH) => impH.
+have satG := present_sat prG; have satH := present_sat prH.
+have:= morphim_presm prG satH; rewrite -(present_gen prH) => impH.
 have phi_morph : morphic G (presm prH satG \o presm prG satH).
   apply/morphicP => x y xinG yinG.
   by rewrite /= !morphM // -impH mem_morphim.
 have : forall i, morphm phi_morph (gens i) = gens i.
   by move=> i; rewrite morphmE /= !presmP.
-move=> /(presmE prG (satisfy_gens prG)) presmP.
+move=> /(presmE prG satG) presmP.
 have {presmP} presmK : {in G, cancel (presm prG satH) (presm prH satG)}.
   by move => x Hx; move: presmP => /(_ x Hx) /=; rewrite presm_id.
 exists (presm prG satH) => //.
@@ -290,11 +286,8 @@ Lemma present_trivG : (fun _ : 'I_0 => 1, [::]) \present [1 gT].
 Proof.
 constructor => //=.
 - rewrite -gen0; congr << _ >>; apply/setP => x; rewrite inE.
-  apply/negP => /imsetP /=[[i Hi]] /= _ _.
-  by move: Hi; rewrite ltn0.
-- move=> hT gensH _.
-  exists [morphism of trivm 1%G].
-  by move=> [i Hi] /=; have := Hi; rewrite ltn0.
+  by apply/esym/negP => /imsetP[[]].
+- by move=> hT gensH _; exists [morphism of trivm 1%G] => [[]].
 Qed.
 
 End PresentTriv.
@@ -307,7 +300,7 @@ Lemma present_bool :
 Proof.
 have trin : true \in [set true | _ : 'I_1] by apply/imsetP; exists ord0.
 constructor => /=.
-- apply/eqP; rewrite -subTset.
+- apply/esym/eqP; rewrite -subTset.
   apply/subsetP => [[|]] _; apply/generatedP=> G /subsetP/(_ true)/(_ trin) => //.
   by move=> trinG; exact: (groupM trinG trinG).
 - by rewrite andbT big_nil big_cons big_seq1.
