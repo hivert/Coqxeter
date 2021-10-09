@@ -279,22 +279,15 @@ Proof. by rewrite (present_gen coxpresP) mem_gen // imset_f. Qed.
 Lemma memcoxw s : 's_[s] \in W.
 Proof. by apply group_prod => i _; apply memcoxs. Qed.
 
+Lemma memcoxwP w : w \in W -> {s | 's[W]_[s] = w}.
+Proof. exact/(present_seqP coxpresP). Qed.
 Lemma memcoxP w : reflect (exists s, 's_[s] = w) (w \in W).
 Proof.
-rewrite (present_gen coxpresP).
-apply (iffP gen_prodgP) => [[n [f Hf ->{w}]] | [s <-{w}]].
-- have getg j : {h | f j == 's[W]_h}.
-    by apply sigW; move/(_ j) : Hf => /imsetP[k _ ->]; exists k.
-  exists [seq val (getg i) | i <- index_enum [finType of 'I_n]].
-  rewrite /= big_map; apply eq_bigr => j _ /=.
-  by case: (getg j) => [k /= /eqP ->].
-- exists (size s), (fun j => 's_(tnth (in_tuple s) j)) => [j|].
-    exact: imset_f.
-  by rewrite -(big_tuple _ _ _ xpredT 'S[W]) /=.
+by apply (iffP idP) => [/memcoxwP|] [] s <-{w}; [exists s | exact: memcoxw].
 Qed.
+
 Lemma coxrelP i j :  ('s_i * 's_j) ^+ 'M_(i, j) = 1.
 Proof. exact: coxmat_rel. Qed.
-
 Lemma mulss i : 's_i * 's_i = 1.
 Proof. exact: (coxmat_mulss coxmatP). Qed.
 Lemma coxsV i : 's_i ^-1 = 's_i.
@@ -334,6 +327,8 @@ Lemma conjs_refls i t : t \in reflexions -> t ^ 's_i \in reflexions.
 Proof. by move/conj_refls; apply; apply: memcoxs. Qed.
 Lemma reflsK t : t \in reflexions -> t * t = 1.
 Proof. by move/imset2P => [i w _ _ ->]; rewrite -conjMg mulss conj1g. Qed.
+Lemma reflsV t : t \in reflexions -> t ^-1 = t.
+Proof. by move=> /reflsK t2; apply (mulgI t); rewrite t2 mulgV. Qed.
 
 Lemma coxwrev s : 's_[rev s] = 's_[s] ^-1.
 Proof.
@@ -436,12 +431,25 @@ rewrite (negbTE Hw) /= => _ H.
 apply anti_leq; rewrite leq0n andbT; apply H.
 by apply/existsP; exists (in_tuple [::]).
 Qed.
+Lemma redwordP w : {s | w \in W -> 's[W]_[s] = w & length w = size s}.
+Proof.
+suff : {s : (length w).-tuple I | (w \in W) ==> ('s[W]_[s] == w)}.
+  move=> [[s/= /eqP szs H]]; exists s; last by rewrite szs.
+  by move=> win; move: H; rewrite win /= => /eqP.
+apply sigW; rewrite /length => /=; case: ex_minnP => l /existsP[/= t].
+by move=> heq _; exists t.
+Qed.
+Definition redword w := let: exist2 s _ _ := redwordP w in s.
+Lemma redwordE w : w \in W -> 's_[redword w] = w.
+Proof. by rewrite /redword; case: redwordP. Qed.
+Lemma size_redword w : size (redword w) = length w.
+Proof. by rewrite /redword; case: redwordP. Qed.
+
 Lemma lengthP w : w \in W -> exists2 s, 's[W]_[s] = w & length w = size s.
 Proof.
-rewrite /length => Hw; case: ex_minnP => l /existsP [/= t].
-by rewrite Hw /= => /eqP <- _; exists t => //; rewrite size_tuple.
+move=> win; exists (redword w); first exact: redwordE.
+by rewrite size_redword.
 Qed.
-
 Lemma lengthw s : length 's_[s] <= size s.
 Proof.
 rewrite /length; case: ex_minnP => l _ /(_ (size s)); apply.
@@ -454,16 +462,14 @@ rewrite -(coxnil W); apply/eqP.
 by rewrite -leqn0 (leq_trans (lengthw [::])).
 Qed.
 Lemma length0P w : w \in W -> length w = 0 -> w = 1.
-Proof.
-move/lengthP => [s <- Hlen].
-by rewrite Hlen => /eqP/nilP->; rewrite big_nil.
-Qed.
+Proof. by move/lengthP => [s <- ->] /eqP/nilP ->; rewrite big_nil. Qed.
 
 Lemma reduced_lengthE s : (s \is reduced) = (size s == length 's_[s]).
 Proof.
 apply/reducedP/eqP => [Hred | -> s' <-]; last exact: lengthw.
 apply anti_leq; rewrite lengthw ?memcoxw // andbT.
-by case: (lengthP (memcoxw s)) => t /Hred les ->.
+have := Hred (redword 's_[s]) (redwordE _) => /(_ (memcoxw s)).
+by rewrite size_redword.
 Qed.
 Lemma reduced_length s : s \is reduced -> size s = length 's_[s].
 Proof. by rewrite reduced_lengthE => /eqP. Qed.
@@ -479,10 +485,10 @@ Lemma oddcoxs i : oddcox 's_i = true.
 Proof. by rewrite /oddcox; case: presm_spec. Qed.
 Lemma oddcox_lenght w : w \in W -> oddcox w = odd (length w).
 Proof.
-move/lengthP => [s <- ->{w}].
+rewrite -size_redword => /redwordE {1}<-.
 rewrite morph_prod => [|i _]; last exact: memcoxs.
 under eq_bigr do rewrite oddcoxs.
-elim: s => [|s0 s IHs]; first by rewrite big_nil.
+elim: (redword w) => [|s0 s IHs]; first by rewrite big_nil.
 by rewrite big_cons {}IHs.
 Qed.
 
@@ -542,7 +548,7 @@ case: (ltngtP (length ('s_i * w)) (length w)) => Hlen; first last.
 Qed.
 
 Structure coxrefl : predArgType :=
-  CoxRefl { coxreflval :> gT; _ : coxreflval \in reflexions}.
+  CoxRefl { coxreflval :> gT; _ : coxreflval \in reflexions }.
 Canonical coxrefl_subType := Eval hnf in [subType for coxreflval].
 Definition coxrefl_eqMixin := Eval hnf in [eqMixin of coxrefl by <:].
 Canonical coxrefl_eqType := EqType coxrefl coxrefl_eqMixin.
@@ -590,8 +596,11 @@ Definition permreflb i : {perm coxrefl * bool} := perm (can_inj (actreflbK i)).
 Lemma permreflbK i : permreflb i ^+ 2 = 1.
 Proof. by apply/permP => p; rewrite !permE /= !permE actreflbK. Qed.
 
-Local Notation ntw s t :=
+Definition ntw s t :=
   (count_mem t [seq tword (take i.+1 s) | i <- iota 0 (size s)]).
+(** This is eta of Equation 1.17 *)
+Definition oddntw w (t : coxrefl) := odd (ntw (redword w) (val t)).
+
 Lemma permreflbsE s (t : coxrefl) (e : bool) :
   (\prod_(i <- s) permreflb i) (t, e) = (coxreflJw t s, e * odd (ntw s (val t))).
 Proof.
@@ -604,7 +613,7 @@ rewrite -conjgM -mulgA eqxx /=; apply/eqP; congr (_ * _).
 (** This is the recursion of Eq (1.15). *)
 have takes n : n < size s -> take n.+1 (rcons s sn) = take n.+1 s.
   by move=> Hn; rewrite -cats1 takel_cat.
-rewrite cats1 size_rcons -{1}addn1 iotaD add0n map_cat count_cat.
+rewrite /ntw cats1 size_rcons -{1}addn1 iotaD add0n map_cat count_cat.
 rewrite oddD /= addn0 oddb; congr (odd (count_mem (val t) _) * _).
   apply eq_in_map => i; rewrite mem_iota /= add0n => ltis.
   by rewrite takes.
@@ -613,36 +622,13 @@ rewrite -cats1 !big_cat big_seq1 /= coxwrev.
 by rewrite eq_conjg conjgE invgK mulgA.
 Qed.
 
-(** TODO: Is this still useful ?
-Lemma Eq_1_15 i0 s (t : gT) :
-  odd (n s t) =
-  \prod_(0 <= i < (size s)) ('s_(nth i0 s i) == t ^ 's_[take i.+1 s]).
-Proof.
-elim/last_ind: s t => [|s sn IHs] t; first by rewrite /= big_nil.
-have takes i : i < size s -> take i.+1 (rcons s sn) = take i.+1 s.
-  by move=> Hi; rewrite -cats1 takel_cat.
-have nths i : i < size s -> nth i0 (rcons s sn) i = nth i0 s i.
-  by move=> Hi; rewrite -cats1 nth_cat Hi.
-rewrite size_rcons -{1}addn1 iotaD add0n map_cat count_cat oddD /= addn0 oddb.
-rewrite big_nat_recr /= //; congr (_ * _).
-  rewrite big_nat; under eq_bigr do rewrite takes // nths //.
-  rewrite -big_nat -IHs //; congr (odd (count_mem t _)).
-  apply eq_in_map => i; rewrite mem_iota /= add0n => ltis.
-  by rewrite takes.
-rewrite -(size_rcons s sn) take_size nth_rcons ltnn eqxx /tword rev_rcons /=.
-rewrite -[LHS](inj_eq (conjg_inj 's_[rcons s sn])); congr (_ == _).
-rewrite conjgE big_cat /= -!mulgA mulKg.
-by rewrite -cats1 big_cat big_seq1 /= coxwrev mulKg.
-Qed.
-*)
-
 Lemma permreflb_coxrel : satisfy (coxrels_of_mat 'M[W]) permreflb.
 Proof.
 apply/satisfyP=> /= [[l r] /allpairsP[[i j] /= [_ _ [->{l} ->{r}]]]].
 apply/permP => /= [][t e]; rewrite big_nil perm1 permreflbsE.
 apply/eqP; rewrite reflb_eqE => /=.
 rewrite cox_altseq_double coxrelP conjg1 eqxx /=.
-rewrite -{2}(mulg1 e); apply/eqP; congr (e * _); rewrite size_altseq.
+rewrite -{2}(mulg1 e); apply/eqP; congr (e * _); rewrite /ntw size_altseq.
 transitivity (odd (count_mem (val t)
     [seq 's_[altseq i j k.*2.+1] | k <- iota 0 'M_(i, j).*2])).
   congr (odd (count_mem _ _)); apply eq_in_map => k.
@@ -665,13 +651,27 @@ Definition permreflbm : {morphism W >-> {perm coxrefl * bool}} :=
 Lemma permreflbmE i : permreflbm 's_i = permreflb i.
 Proof. by rewrite /permreflbm;  case: presm_spec. Qed.
 (** This is Eq 1.16 *)
-Lemma permreflbsmE s (t : coxrefl) (e : bool) :
+Lemma permreflbmsE s (t : coxrefl) (e : bool) :
   permreflbm 's_[s] (t, e) = (coxreflJw t s, e * odd (ntw s (val t))).
 Proof.
 rewrite morph_prod => [|i _]; last exact: memcoxs.
 under eq_bigr do rewrite permreflbmE.
 exact: permreflbsE.
 Qed.
+Lemma oddntwE w (t : coxrefl) s :
+  's_[s] = w -> odd (ntw s (val t)) = oddntw w t.
+Proof.
+move=> eqw; rewrite /oddntw.
+have:= permreflbmsE s t false.
+have := memcoxw s; rewrite eqw => /redwordE {1}<-.
+by rewrite permreflbmsE !mul1g => [] [_ -> /=].
+Qed.
+(** This is Eq 1.18 *)
+Lemma permreflbmwE w (t : coxrefl) (e : bool) :
+  w \in W ->
+  permreflbm w (t, e) = (coxreflJw t (redword w), e * oddntw w t).
+Proof. by move=> win; rewrite -{1}(redwordE win) permreflbmsE. Qed.
+
 
 Lemma permreflbm_inj : 'injm permreflbm.
 Proof.
@@ -684,9 +684,9 @@ have Ht1 : tword (take 1 s) \in reflexions.
   case: s lt0s {sred} => // s0 s _ /=.
   by rewrite take0 /tword /= big_seq1 coxs_refls.
 apply/negP => /eqP/permP/(_ (CoxRefl Ht1, false)).
-rewrite perm1 permreflbsmE.
+rewrite perm1 permreflbmsE.
 suff -> : ntw s (tword (take 1 s)) = 1%N by [].
-rewrite (count_uniq_mem _ (reduced_tword_uniq sred)).
+rewrite /ntw (count_uniq_mem _ (reduced_tword_uniq sred)).
 by apply/eqP; rewrite eqb1; apply: map_f; rewrite mem_iota /= add0n.
 Qed.
 
@@ -710,11 +710,41 @@ rewrite eq_conjg coxsV conjgg -addNb -mulgA.
 by case: ('s_sn == _); rewrite mulg1.
 Qed.
 
-Lemma strong_exchange s t :
-  t \in reflexions -> length (t * 's_[s]) < length 's_[s] ->
+Lemma odd_has T (s : seq T) (P : pred T) : odd (count P s) -> has P s.
+Proof. by rewrite has_count; case: count. Qed.
+
+Lemma lengthM_oddntw w (t : coxrefl) :
+  w \in W -> (length (t * w) < length w) = oddntw w t.
+Proof.
+have impl w' t' : w' \in W -> oddntw w' t' -> (length (t' * w') < length w').
+  rewrite /oddntw /ntw => win /odd_has/hasP/= [tw /mapP[/= i]].
+  rewrite mem_iota add0n /= => ltis ->{tw} /eqP<-.
+  rewrite -{2}(redwordE win) Eq1_11 //; apply (leq_ltn_trans (lengthw _)).
+  rewrite size_cat (size_takel (ltnW ltis)) size_drop.
+  move: ltis; rewrite size_redword; case: (length w') => // l /ltnSE leil.
+  by rewrite ltnS subSS subnKC.
+move=> win; apply/idP/idP; last exact: impl.
+apply contraLR => /negPf oddtwf; rewrite -leqNgt; apply ltnW.
+have tin := reflsW (coxreflP t).
+have twin : t * w \in W by rewrite groupM.
+have tVwin : t^-1 * w \in W by rewrite groupM // groupV.
+have := permreflbmwE t false tVwin.
+rewrite (reflsV (coxreflP t)) morphM ?groupV //.
+rewrite permM permreflbm_coxrefl /=.
+rewrite permreflbmwE // oddtwf mul1g mulg1 => [][_ /esym/impl]/(_ twin).
+by rewrite mulgA (reflsK (coxreflP t)) mul1g.
+Qed.
+
+Theorem strong_exchange s (t : coxrefl) :
+  length (t * 's_[s]) < length 's_[s] ->
   exists2 i, i < size s & t * 's_[s] = 's_[take i s ++ drop i.+1 s].
 Proof.
-Admitted.
+have sin := memcoxw s.
+rewrite (lengthM_oddntw _ sin) -(oddntwE _ (erefl _)).
+rewrite /ntw => /odd_has/hasP/= [tw /mapP[/= i]].
+rewrite mem_iota add0n /= => ltis ->{tw} /eqP<-.
+by rewrite Eq1_11 //; exists i.
+Qed.
 
 End Reflections.
 

@@ -15,7 +15,7 @@
 (******************************************************************************)
 Require Import mathcomp.ssreflect.ssreflect.
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq.
-From mathcomp Require Import choice fintype finset finfun.
+From mathcomp Require Import choice fintype finset finfun tuple.
 From mathcomp Require Import bigop fingroup perm morphism alt gproduct.
 Require Import ssrcompl.
 
@@ -136,9 +136,9 @@ move=> eqgens; apply And3 => //=.
 Qed.
 
 Lemma presentP x :
-  reflect (exists l (c : 'I_l -> I), x = \prod_i gens (c i)) (x \in G).
+  reflect (exists l (c : 'I_l -> I), \prod_i gens (c i) = x) (x \in G).
 Proof.
-apply (iffP idP) => [| [l [dec ->{x}]]]; last exact: group_prod.
+apply (iffP idP) => [| [l [dec <-{x}]]]; last exact: group_prod.
 rewrite present_gen => /gen_prodgP[l [gen Hgen ->{x}]].
 have {}get_gen i : {j : I | gen i == gens j}.
   by apply sigW => /=; move: Hgen => /(_ i) /imsetP[/= j _ ->]; exists j.
@@ -147,6 +147,26 @@ have decE i : gen i = gens (val (get_gen i)).
   by case: (get_gen i) => j /= /eqP.
 by exists l, (fun i => val (get_gen i)); apply eq_bigr.
 Qed.
+
+Lemma present_seq_minP x :
+  x \in G ->
+  {s : seq I | \prod_(i <- s) gens i = x &
+                forall s', \prod_(i <- s') gens i = x -> size s <= size s'}.
+Proof.
+move=> xin.
+suff : exists l, [exists t : l.-tuple I, \prod_(i <- t) gens i == x].
+  move=> exP; case: (ex_minnP exP) => l /existsP/sigW [/= t /eqP eqt tmin].
+  exists t => [//|s' eqs'].
+  rewrite size_tuple; apply: tmin; apply/existsP.
+  by exists (in_tuple s'); rewrite eqs'.
+move/presentP : xin => [l [f eqx]]; exists l; apply/existsP.
+exists [tuple f i | i < l]; rewrite -eqx big_tuple.
+by apply/eqP/eq_bigr => /= i _; rewrite tnth_mktuple.
+Qed.
+
+Lemma present_seqP x :
+  x \in G -> {s : seq I | \prod_(i <- s) gens i = x}.
+Proof. by move=> /present_seq_minP [s Hs _]; exists s. Qed.
 
 
 Section Morphism.
@@ -172,7 +192,7 @@ Proof. by rewrite /presm; case: presm_spec. Qed.
 Lemma presmE (phi : {morphism G >-> hT}) :
   (forall i, phi (gens i) = gensH i) -> {in G, phi =1 presm}.
 Proof.
-move=> Heq x /presentP [l [decc ->{x}]].
+move=> Heq x /presentP [l [decc <-{x}]].
 rewrite !morph_prod //.
 by apply: eq_bigr => /= i _; rewrite Heq presmP.
 Qed.
