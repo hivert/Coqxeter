@@ -17,7 +17,7 @@ Require Import mathcomp.ssreflect.ssreflect.
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq.
 From mathcomp Require Import choice fintype finset finfun order fingraph.
 From mathcomp Require Import tuple bigop fingroup perm morphism alt gproduct.
-Require Import natbar present.
+Require Import present.
 
 
 Set Implicit Arguments.
@@ -99,50 +99,39 @@ Section CoxeterMatrix.
 Context {I : finType}.
 
 Definition Coxeter_matrix :=
-  [qualify a m : I * I -> natbar | [&&
-    [forall i : I, forall j : I, (m (i, j) >= Nat 1%N)%O],
-    [forall i : I, forall j : I, (i == j) == (m (i, j) == Nat 1%N)] &
-    [forall i : I, forall j : I, m (i, j) == m (j, i)] ]].
+  [qualify a M : I * I -> nat | [&&
+    [forall i : I, forall j : I, (i == j) == (M (i, j) == 1%N)] &
+    [forall i : I, forall j : I, M (i, j) == M (j, i)] ]].
+Definition coxrels_of_mat (M : I * I -> nat) : seq (seq I * seq I) :=
+  [seq (altseq i j (M (i, j)).*2, [::]) | i <- enum I, j <- enum I].
 
-Lemma Coxeter_matrixP m :
-  reflect [/\ (forall i j : I, (m (i, j) >= Nat 1%N)%O),
-              (forall i j : I, (i == j) = (m (i, j) == Nat 1%N)) &
-              (forall i j : I, m (i, j) = m (j, i)) ]
-          (m \is a Coxeter_matrix).
+Section Defs.
+Variable (M : I * I -> nat).
+
+Lemma Coxeter_matrixP :
+  reflect ((forall i j : I, (i == j) = (M (i, j) == 1%N)) /\
+           (forall i j : I, M (i, j) = M (j, i)))
+          (M \is a Coxeter_matrix).
 Proof.
-apply (iffP and3P) => [[] | [H1 H2 H3]].
-- move => /forallP H1 /forallP H2 /forallP H3.
-  split => i; try by apply/forallP.
-  + by move=> j; have := H2 i => /forallP/(_ j)/eqP.
-  + by move=> j; have := H3 i => /forallP/(_ j)/eqP.
+apply (iffP andP) => [[] | [H1 H2]].
+- move=> /forallP H1 /forallP H2; split => i j.
+  + by have := H1 i => /forallP/(_ j)/eqP.
+  + by have := H2 i => /forallP/(_ j)/eqP.
 - by split; apply/forallP => i; apply/forallP => j //; apply/eqP.
 Qed.
 
-Variable (M : I * I -> natbar).
 Hypothesis (iscox : M \is a Coxeter_matrix).
 
-Lemma coxmpos i j : (M (i, j) >= Nat 1%N)%O.
+Lemma coxmdiagE i j : (i == j) = (M (i, j) == 1%N).
 Proof. by move/Coxeter_matrixP : iscox => []. Qed.
-Lemma coxmdiagE i j : (i == j) = (M (i, j) == Nat 1).
-Proof. by move/Coxeter_matrixP : iscox => []. Qed.
-Lemma coxmdiag i : M (i, i) = Nat 1.
+Lemma coxmdiag i : M (i, i) = 1%N.
 Proof. by have := coxmdiagE i i; rewrite eqxx => /esym/eqP. Qed.
 Lemma coxmsym i j : M (i, j) = M (j, i).
 Proof. by move/Coxeter_matrixP : iscox => []. Qed.
 
-Definition coxrel (T : Type) (x y : T) (exp : natbar) : seq T :=
-  if exp is Nat n then altseq x y n.*2 else [::].
-Definition coxrels_of_mat (I : finType) (M : I * I -> natbar)
-  : seq (seq I * seq I) :=
-  [seq (coxrel i j (M (i, j)), [::]) | i <- enum I, j <- enum I].
-
-Lemma map_coxrel (J : finType) (f : I -> J) (i1 i2 : I) n :
-  map f (coxrel i1 i2 n) = coxrel (f i1) (f i2) n.
-Proof. by case: n => //= n; rewrite map_altseq. Qed.
-
+End Defs.
 
 Variables (gT : finGroupType) (gen : I -> gT).
-Hypothesis (sat : satisfy (coxrels_of_mat M) gen).
 
 Local Notation "''s_' i" := (gen i).
 Local Notation "''s_' [ w ] " := (\prod_(i <- w) 's_i).
@@ -161,18 +150,39 @@ rewrite add1n altseqSr odd_double -cats1 big_cat /=.
 by rewrite cox_altseq_double big_seq1.
 Qed.
 
-Lemma coxmat_rel i j n : M (i, j) = Nat n -> ('s_i * 's_j) ^+ n = 1.
+Variable (M : I * I -> nat).
+Hypothesis (iscox : M \is a Coxeter_matrix).
+
+Lemma sat_coxrels_of_matP :
+  reflect (forall i j, ('s_i * 's_j) ^+ M (i, j) = 1)
+          (satisfy (coxrels_of_mat M) gen).
 Proof.
-move/satisfyP: sat => satg matij.
-have {matij}/satg : (coxrel i j (Nat n), [::]) \in coxrels_of_mat M.
-  by rewrite -matij; apply: allpairs_f; apply: mem_enum.
-by rewrite /coxrel /= big_nil cox_altseq_double.
+apply (iffP (satisfyP _ _)) => /=[sat i j | rel [r1 r2]].
+- have:= sat (altseq i j (M (i, j)).*2, [::]).
+  rewrite cox_altseq_double big_nil /=; apply.
+  apply/allpairsP; exists (i, j) => /=.
+  by split; [exact: mem_enum|exact: mem_enum|].
+- move/allpairsP => [[i1 i2] [_ _[->{r1}->{r2}]]]/=.
+  by rewrite cox_altseq_double big_nil.
 Qed.
 
-Lemma coxmat_exps2 i : 's_i ^+ 2 = 1.
-Proof. by have /coxmat_rel := coxmdiag i; rewrite expg1. Qed.
+Lemma sat_coxmatP :
+  reflect ((forall i, 's_i * 's_i  = 1) /\
+           forall i j, ('s_i * 's_j) ^+ M (i, j) = 1)
+          (satisfy (coxrels_of_mat M) gen).
+Proof.
+move:iscox => /coxmdiag Hdiag.
+apply (iffP sat_coxrels_of_matP) => [H|[]//].
+split => [i|]; last exact: H.
+by have := H i i; rewrite Hdiag expg1.
+Qed.
+
+Hypothesis (sat : satisfy (coxrels_of_mat M) gen).
+
+Lemma coxmat_rel i j : ('s_i * 's_j) ^+ M (i, j) = 1.
+Proof. by move/sat_coxmatP: sat => []. Qed.
 Lemma coxmat_mulss i : 's_i * 's_i = 1.
-Proof. exact: coxmat_exps2. Qed.
+Proof. by move/sat_coxmatP: sat => []. Qed.
 Lemma coxmat_sV i : 's_i ^-1 = 's_i.
 Proof. by rewrite -[LHS](mul1g) -(coxmat_mulss i) mulgK. Qed.
 Lemma coxmat_mulKs i : cancel (mulg 's_i) (mulg 's_i).
@@ -180,9 +190,9 @@ Proof. by move=> x; rewrite mulgA coxmat_mulss mul1g. Qed.
 Lemma coxmat_mulsK i : cancel (mulg^~ 's_i) (mulg^~ 's_i).
 Proof. by move=> x; rewrite -mulgA coxmat_mulss mulg1. Qed.
 
-Lemma coxmat_sC i j : M (i, j) = Nat 2 -> commute 's_i 's_j.
+Lemma coxmat_sC i j : M (i, j) = 2 -> commute 's_i 's_j.
 Proof.
-move/coxmat_rel.
+have := coxmat_rel i j => /[swap] ->.
 rewrite /commute => /(congr1 (mulg ('s_ j * 's_ i))).
 by rewrite mulg1 !mulgA coxmat_mulsK coxmat_mulss mul1g.
 Qed.
@@ -197,7 +207,7 @@ Variables (gT : finGroupType).
 Record Coxeter_system (W : {group gT}) := CoxSys {
   coxind : finType;
   coxgen : coxind -> gT;
-  coxmat : coxind * coxind -> natbar;
+  coxmat : coxind * coxind -> nat;
   _ : coxmat \is a Coxeter_matrix;
   _ : (coxgen, coxrels_of_mat coxmat) \present W
 }.
@@ -248,7 +258,7 @@ Implicit Types (i : 'I) (s : seq 'I).
 
 
 Definition rank := #|[set: 'I]|.
-Definition coxirred := n_comp (fun i j => 'M[W]_(i, j) >= Nat 3)%O predT == 1%N.
+Definition coxirred := n_comp (fun i j => 'M[W]_(i, j) >= 3)%O predT == 1%N.
 
 Lemma coxmatP : 'M[W] \is a Coxeter_matrix.
 Proof. by case: W => [G []]. Qed.
@@ -282,20 +292,18 @@ apply (iffP gen_prodgP) => [[n [f Hf ->{w}]] | [s <-{w}]].
     exact: imset_f.
   by rewrite -(big_tuple _ _ _ xpredT 'S[W]) /=.
 Qed.
-Lemma coxrelP i j n : 'M_(i, j) = Nat n -> ('s_i * 's_j) ^+ n = 1.
+Lemma coxrelP i j :  ('s_i * 's_j) ^+ 'M_(i, j) = 1.
 Proof. exact: coxmat_rel. Qed.
 
-Lemma exps2 i : 's_i ^+ 2 = 1.
-Proof. exact: (coxmat_exps2 coxmatP). Qed.
 Lemma mulss i : 's_i * 's_i = 1.
-Proof. exact: exps2. Qed.
+Proof. exact: (coxmat_mulss coxmatP). Qed.
 Lemma coxsV i : 's_i ^-1 = 's_i.
 Proof. exact: (coxmat_sV coxmatP). Qed.
 Lemma mulKs i : cancel (mulg 's_i) (mulg 's_i).
 Proof. exact: (coxmat_mulKs coxmatP). Qed.
 Lemma mulsK i : cancel (mulg^~ 's_i) (mulg^~ 's_i).
 Proof. exact: (coxmat_mulsK coxmatP). Qed.
-Lemma coxsC i j : 'M_(i, j) = Nat 2 -> commute 's_i 's_j.
+Lemma coxsC i j : 'M_(i, j) = 2 -> commute 's_i 's_j.
 Proof. exact: (coxmat_sC coxmatP). Qed.
 
 End Basic.
@@ -462,9 +470,8 @@ Proof. by rewrite reduced_lengthE => /eqP. Qed.
 
 Lemma oddcox_subproof : satisfy (coxrels_of_mat 'M[W]) (fun => true).
 Proof.
-apply/satisfyP=> /= [[l r] /allpairsP[[i j] /= [_ _]]].
-rewrite /coxrel; case: 'M_(_) => [n|] [->{l} ->{r}]; rewrite big_nil //.
-by rewrite cox_altseq_double expg1n.
+apply/satisfyP=> /= [[l r] /allpairsP[[i j] /= [_ _ [->{l} ->{r}]]]].
+by rewrite cox_altseq_double big_nil expg1n.
 Qed.
 Definition oddcox : {morphism W >-> boolGroup} :=
   let: exist m _ := presm_spec (coxpresP W) oddcox_subproof in m.
@@ -631,15 +638,14 @@ Qed.
 
 Lemma permreflb_coxrel : satisfy (coxrels_of_mat 'M[W]) permreflb.
 Proof.
-apply/satisfyP=> /= [[l r] /allpairsP[[i j] /= [_ _]]].
-rewrite /coxrel; case Hm: 'M_(_) => [m|] [->{l} ->{r}]; rewrite big_nil //.
-apply/permP => /= [][t e]; rewrite perm1 permreflbsE.
+apply/satisfyP=> /= [[l r] /allpairsP[[i j] /= [_ _ [->{l} ->{r}]]]].
+apply/permP => /= [][t e]; rewrite big_nil perm1 permreflbsE.
 apply/eqP; rewrite reflb_eqE => /=.
-move/coxrelP in Hm; rewrite cox_altseq_double Hm conjg1 eqxx /=.
+rewrite cox_altseq_double coxrelP conjg1 eqxx /=.
 rewrite -{2}(mulg1 e); apply/eqP; congr (e * _); rewrite size_altseq.
 transitivity (odd (count_mem (val t)
-    [seq 's_[altseq i j k.*2.+1] | k <- iota 0 m.*2])).
-  congr (odd (count_mem _ _)); apply eq_in_map => k {Hm}.
+    [seq 's_[altseq i j k.*2.+1] | k <- iota 0 'M_(i, j).*2])).
+  congr (odd (count_mem _ _)); apply eq_in_map => k.
   rewrite mem_iota /= add0n => ltk; rewrite /tword; congr 's_[_].
   rewrite take_altseq // rev_altseq /= if_neg fun_if.
   have eqk : k = k.*2.+1 - k.+1 by rewrite subSS -addnn addnK.
@@ -648,11 +654,11 @@ transitivity (odd (count_mem (val t)
 rewrite -addnn iotaD map_cat add0n count_cat oddD.
 set X := (X in count_mem _ X); set Y := (Y in _ (+) odd (count_mem _ Y)).
 suff -> : X = Y by case: odd.
-rewrite {}/X {}/Y -{2}(addn0 m) iotaDl -map_comp; apply eq_map => k /=.
+rewrite {}/X {}/Y -{2}(addn0 'M_(i, j)) iotaDl -map_comp; apply eq_map => k /=.
 rewrite -!altseqSl !altseqSr !odd_double -!cats1 !big_cat /=; congr (_ * _).
-rewrite doubleD -(cat_take_drop m.*2 (altseq i j (_ + _))).
+rewrite doubleD -(cat_take_drop 'M_(i, j).*2 (altseq i j (_ + _))).
 rewrite take_altseq ?leq_addr // drop_altseq odd_double addKn big_cat /=.
-by rewrite !cox_altseq_double Hm mul1g.
+by rewrite !cox_altseq_double coxrelP mul1g.
 Qed.
 Definition permreflbm : {morphism W >-> {perm coxrefl * bool}} :=
   let: exist m _ := presm_spec (coxpresP W) permreflb_coxrel in m.
@@ -718,7 +724,7 @@ Section Triv.
 
 Variables (gT : finGroupType).
 
-Definition set1_coxmat := fun _ : 'I_0 * 'I_0 => Inf.
+Definition set1_coxmat := fun _ : 'I_0 * 'I_0 => 0.
 Definition set1_coxgen := fun _ : 'I_0 => 1 : gT.
 Lemma set1_coxmatP : set1_coxmat \is a Coxeter_matrix.
 Proof. by apply/Coxeter_matrixP; split => [][]. Qed.
@@ -734,7 +740,7 @@ Canonical set1_coxgrp := CoxGrp (CoxSys set1_coxmatP set1_present).
 
 End Triv.
 
-Definition bool_coxmat := fun _ : 'I_1 * 'I_1 => Nat 1.
+Definition bool_coxmat := fun _ : 'I_1 * 'I_1 => 1%N.
 Definition bool_coxgen := fun _ : 'I_1 => true.
 Lemma bool_coxmatP : bool_coxmat \is a Coxeter_matrix.
 Proof. by apply/Coxeter_matrixP; split => [][[|]// H1][[|]]. Qed.
@@ -762,13 +768,13 @@ Definition dprod_coxmat :=
   fun (p : ('I[A] + 'I[B]) * ('I[A] + 'I[B])) =>
     match p with
     | (inl i, inl j) | (inr i, inr j) => 'M_(i, j)
-    | _ => Nat 2
+    | _ => 2
     end.
 
 Lemma dprod_coxmatP : dprod_coxmat \is a Coxeter_matrix.
 Proof.
-have /Coxeter_matrixP [A1 AD AS]:= coxmatP A.
-have /Coxeter_matrixP [B1 BD BS]:= coxmatP B.
+have /Coxeter_matrixP [AD AS]:= coxmatP A.
+have /Coxeter_matrixP [BD BS]:= coxmatP B.
 rewrite /dprod_coxmat; apply/Coxeter_matrixP.
 by split => [][a1|b1][a2|b2]; rewrite -?AD -?BD.
 Qed.
@@ -777,47 +783,22 @@ Lemma dprod_coxmatE (hT : finGroupType) :
   satisfy (gT := hT) (coxrels_of_mat dprod_coxmat)
   =1 satisfy (dprod_rels (coxrels_of_mat 'M[A]) (coxrels_of_mat 'M[B])).
 Proof.
-move=> g; apply/satisfyP/satisfyP => /= sat rel.
-- rewrite !mem_cat => /or3P[] rin.
-  + apply: sat; apply/allpairsP.
-    move: rin => /mapP[r /allpairsP[[a1 a2] /= [_ _] ->{r}->{rel}]]/=.
-    exists (inl a1, inl a2) => /=.
-    by split; [exact: mem_enum|exact: mem_enum|rewrite map_coxrel].
-  + apply: sat; apply/allpairsP.
-    move: rin => /mapP[r /allpairsP[[b1 b2] /= [_ _] ->{r}->{rel}]]/=.
-    exists (inr b1, inr b2) => /=.
-    by split; [exact: mem_enum|exact: mem_enum|rewrite map_coxrel].
-  + move: rin => /allpairsP[[a b] /= [_ _] ->{rel}]/=.
-    rewrite /= !biggseq (coxmat_sC dprod_coxmatP) //.
-    exact/satisfyP.
-- have comAB (a : 'I[A]) (b : 'I[B]) : commute (g (inl a)) (g (inr b)).
-    have := sat ([:: inl a; inr b], [:: inr b; inl a]).
-    rewrite /= !biggseq; apply.
-    rewrite !mem_cat; apply/or3P/Or33.
-    exact/allpairs_f/mem_enum/mem_enum.
-  have Aid (a : 'I[A]) : (g (inl a)) * (g (inl a)) = 1.
-    have := sat ([:: inl a; inl a], [::]).
-    rewrite /= !biggseq; apply.
-    rewrite !mem_cat !map_allpairs; apply/or3P/Or31.
-    apply/allpairsP; exists (a, a) => /=.
-    split; [exact: mem_enum|exact: mem_enum|rewrite map_coxrel].
-    by rewrite coxmdiag // coxmatP.
-  have Bid (b : 'I[B]) : (g (inr b)) * (g (inr b)) = 1.
-    have := sat ([:: inr b; inr b], [::]).
-    rewrite /= !biggseq; apply.
-    rewrite !mem_cat !map_allpairs; apply/or3P/Or32.
-    apply/allpairsP; exists (b, b) => /=.
-    split; [exact: mem_enum|exact: mem_enum|rewrite map_coxrel].
-    by rewrite coxmdiag // coxmatP.
-  move/allpairsP => [][]/=[a1|b1][a2|b2][_ _ ->].
-  + apply: sat; rewrite !mem_cat !map_allpairs.
-    apply/or3P/Or31; apply/allpairsP; exists (a1, a2) => /=.
-    by split; [exact: mem_enum|exact: mem_enum|rewrite map_coxrel].
-  + by rewrite !biggseq {1}comAB -[X in X * _ = 1]mulgA Aid mulg1 Bid.
-  + by rewrite !biggseq -{1}comAB -[X in X * _ = 1]mulgA Bid mulg1 Aid.
-  + apply: sat; rewrite !mem_cat !map_allpairs.
-    apply/or3P/Or32; apply/allpairsP; exists (b1, b2) => /=.
-    by split; [exact: mem_enum|exact: mem_enum|rewrite map_coxrel].
+move=> g; rewrite !satisfy_cat -!satisfy_map.
+apply/sat_coxrels_of_matP/and3P => [sat|].
+- split; try do [apply/sat_coxrels_of_matP => i j /=; exact: sat].
+  apply/satisfyP => /= r /allpairsP[[a b] /= [_ _] ->{r}] /=.
+  rewrite /= !biggseq (coxmat_sC dprod_coxmatP) //.
+  exact/sat_coxrels_of_matP.
+- move => [] /(sat_coxmatP _ (coxmatP A)) [sqA satA].
+  move =>    /(sat_coxmatP _ (coxmatP B)) [sqB satB] comAB.
+  have {}comAB (a : 'I[A]) (b : 'I[B]) : commute (g (inl a)) (g (inr b)).
+    have := satisfyP _ _ comAB ([:: inl a; inr b], [:: inr b; inl a]).
+    by rewrite /= !biggseq; apply; exact/allpairs_f/mem_enum/mem_enum.
+  move=> [a1|b1][a2|b2]; rewrite /= ?expgS ?expg0 ?mulg1 ?mulgA.
+  + exact: satA.
+  + by rewrite {1}comAB -[X in X * _ = 1]mulgA sqA mulg1 sqB.
+  + by rewrite -{1}comAB -[X in X * _ = 1]mulgA sqB mulg1 sqA.
+  + exact: satB.
 Qed.
 
 Hypothesis (eqG : A \x B = G).
