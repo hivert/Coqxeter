@@ -90,13 +90,14 @@ Lemma dprod_coxmatE (hT : finGroupType) :
   =1 satisfy (dprod_rels (coxrels_of_mat 'M[A]) (coxrels_of_mat 'M[B])).
 Proof.
 move=> g; rewrite !satisfy_cat -!satisfy_map.
-apply/sat_coxrels_of_matP/and3P => [sat|].
-- split; try do [apply/sat_coxrels_of_matP => i j /=; exact: sat].
+apply/sat_coxmatP/and3P => [sat|].
+- split; try do [apply/sat_coxmatP => i j /=; exact: sat].
   apply/satisfyP => /= r /allpairsP[[a b] /= [_ _] ->{r}] /=.
   rewrite /= !biggseq (coxmat_sC dprod_coxmatP) //.
-  exact/sat_coxrels_of_matP.
-- move => [] /(sat_coxmatP _ (coxmatP A)) [sqA satA].
-  move =>    /(sat_coxmatP _ (coxmatP B)) [sqB satB] comAB.
+  exact/sat_coxmatP.
+- move => [/sat_coxmatP/= satA /sat_coxmatP/= satB comAB].
+  have sqA i : g (inl i) * g (inl i) = 1 by have:= satA i i; rewrite coxmdiag.
+  have sqB i : g (inr i) * g (inr i) = 1 by have:= satB i i; rewrite coxmdiag.
   have {}comAB (a : 'I[A]) (b : 'I[B]) : commute (g (inl a)) (g (inr b)).
     have := satisfyP _ _ comAB ([:: inl a; inr b], [:: inr b; inl a]).
     by rewrite /= !biggseq; apply; exact/allpairs_f/mem_enum/mem_enum.

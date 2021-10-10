@@ -40,12 +40,13 @@ Variables (gT : finGroupType) (W : {group gT}).
 Lemma conjgg (x : gT) : x ^ x = x.
 Proof. by rewrite conjgE mulKg. Qed.
 
-Lemma eq_conjg (x y z : gT) : (x == y ^ z) = (x ^ (z^-1) == y).
+Lemma eq_conjg (x y z : gT) : (x == y ^ z) = (x ^ (z ^-1) == y).
 Proof. by rewrite -(inj_eq (conjg_inj z ^-1)) -conjgM mulgV conjg1. Qed.
 
 End GroupCompl.
 
 
+(** ** Alternating sequences *)
 Section AltSeq.
 
 Variable (T : Type).
@@ -95,6 +96,7 @@ Lemma map_altseq (T1 T2 : Type) (f : T1 -> T2) x y n :
 Proof. by elim: n x y => [|n IHn] x y //=; rewrite IHn. Qed.
 
 
+(** * Coxeter matrices *)
 Section CoxeterMatrix.
 Context {I : finType}.
 
@@ -153,7 +155,7 @@ Qed.
 Variable (M : I * I -> nat).
 Hypothesis (iscox : M \is a Coxeter_matrix).
 
-Lemma sat_coxrels_of_matP :
+Lemma sat_coxmatP :
   reflect (forall i j, ('s_i * 's_j) ^+ M (i, j) = 1)
           (satisfy (coxrels_of_mat M) gen).
 Proof.
@@ -166,23 +168,12 @@ apply (iffP (satisfyP _ _)) => /=[sat i j | rel [r1 r2]].
   by rewrite cox_altseq_double big_nil.
 Qed.
 
-Lemma sat_coxmatP :
-  reflect ((forall i, 's_i * 's_i  = 1) /\
-           forall i j, ('s_i * 's_j) ^+ M (i, j) = 1)
-          (satisfy (coxrels_of_mat M) gen).
-Proof.
-move:iscox => /coxmdiag Hdiag.
-apply (iffP sat_coxrels_of_matP) => [H|[]//].
-split => [i|]; last exact: H.
-by have := H i i; rewrite Hdiag expg1.
-Qed.
-
 Hypothesis (sat : satisfy (coxrels_of_mat M) gen).
 
 Lemma coxmat_rel i j : ('s_i * 's_j) ^+ M (i, j) = 1.
-Proof. by move/sat_coxmatP: sat => []. Qed.
+Proof. by move/sat_coxmatP: sat => ->. Qed.
 Lemma coxmat_mulss i : 's_i * 's_i = 1.
-Proof. by move/sat_coxmatP: sat => []. Qed.
+Proof. by move/sat_coxmatP: sat => /(_ i i); rewrite coxmdiag. Qed.
 Lemma coxmat_sV i : 's_i ^-1 = 's_i.
 Proof. by rewrite -[LHS](mul1g) -(coxmat_mulss i) mulgK. Qed.
 Lemma coxmat_mulKs i : cancel (mulg 's_i) (mulg 's_i).
@@ -299,6 +290,12 @@ Proof. exact: (coxmat_mulsK coxmatP). Qed.
 Lemma coxsC i j : 'M_(i, j) = 2 -> commute 's_i 's_j.
 Proof. exact: (coxmat_sC coxmatP). Qed.
 
+Lemma coxwrev s : 's_[rev s] = 's_[s] ^-1.
+Proof.
+elim: s => [|s0 s IHs]; first by rewrite !big_nil invg1.
+by rewrite rev_cons -cats1 big_cat big_seq1 !big_cons /= {}IHs invMg coxsV.
+Qed.
+
 End Basic.
 #[export] Hint Resolve coxsat coxmatP : core.
 #[export] Hint Resolve memcoxs memcoxw : core.
@@ -330,11 +327,6 @@ Proof. by move/imset2P => [i w _ _ ->]; rewrite -conjMg mulss conj1g. Qed.
 Lemma reflsV t : t \in reflexions -> t ^-1 = t.
 Proof. by move=> /reflsK t2; apply (mulgI t); rewrite t2 mulgV. Qed.
 
-Lemma coxwrev s : 's_[rev s] = 's_[s] ^-1.
-Proof.
-elim: s => [|s0 s IHs]; first by rewrite !big_nil invg1.
-by rewrite rev_cons -cats1 big_cat big_seq1 !big_cons /= {}IHs invMg coxsV.
-Qed.
 
 Definition tword s := 's_[s ++ behead (rev s)].
 
@@ -374,48 +366,9 @@ rewrite twordE -{1}(invgK 's_[s]) -mulgA -conjgE; apply: imset2_f => //.
 by rewrite groupV.
 Qed.
 
-Definition reduced :=
-  [qualify w : word |
-   all (fun n => [forall l : n.-tuple I, 's_[l] != 's_[w]]) (iota 0 (size w))].
-Lemma reducedP w :
-  reflect (forall w' : word, 's_[w'] = 's_[w] -> size w' >= size w)
-          (w \is reduced).
-Proof.
-apply (iffP allP) => [H w' /eqP | Hmin l].
-- apply contraLR; rewrite -ltnNge => ltsz.
-  have:= H (size w').
-  by rewrite mem_iota /= add0n => /(_ ltsz)/forallP/(_ (in_tuple w')) /=.
-- rewrite mem_iota /= add0n => ltsz; apply/forallP => /= t.
-  apply/contraL : ltsz => /eqP/Hmin.
-  by rewrite -leqNgt size_tuple.
-Qed.
 
-Lemma reduced_tword_inj (i j : nat) s :
-  s \is reduced -> i < j < size s -> tword (take i.+1 s) != tword (take j.+1 s).
-Proof.
-move=> /reducedP sred /andP[ltij ltjs]; apply/negP => /eqP Heq.
-have leij := ltnW ltij. have lejs := ltnW ltjs.
-have:= erefl 's_[s]; rewrite -{1}(mul1g 's_[s]) -{1}(reflsK (tword_refl ltjs)).
-rewrite -{1}Heq {Heq} -mulgA Eq1_11 // big_cat /= mulgA.
-rewrite -(take_take ltij) Eq1_11 ?size_takel // -big_cat => {}/sred.
-rewrite !size_cat !size_drop (take_take leij) !size_takel ?(leq_trans leij) //.
-case: (size s) ltjs {leij lejs} => // sz; rewrite subSS ltnS.
-case: j ltij => // j; rewrite ltnS subSS => /subnKC ->{i}.
-case: sz => // sz; rewrite ltnS subSS => /subnKC ->{j}.
-by rewrite ltnNge leqnSn.
-Qed.
-Lemma reduced_tword_uniq s :
-  s \is reduced -> uniq [seq tword (take i.+1 s) | i <- iota 0 (size s)].
-Proof.
-move/reduced_tword_inj => Hinj.
-apply/(uniqPn 1) => [][i][j][ltij].
-rewrite size_map size_iota => ltjs.
-have ltis := (ltn_trans ltij ltjs).
-rewrite !(nth_map 1%N) ?size_iota // !nth_iota // !add0n => Heq.
-have /Hinj : i < j < size s by rewrite ltij ltjs.
-by rewrite Heq eqxx.
-Qed.
-Lemma length_subproof w :
+(** * Length and reduced words *)
+Fact length_subproof w :
   exists n : nat, [exists t : n.-tuple I, (w \in W) ==> ('s_[t] == w)].
 Proof.
 case: (boolP (w \in W)) => [/memcoxP [s <-] | _]; first last.
@@ -423,6 +376,7 @@ case: (boolP (w \in W)) => [/memcoxP [s <-] | _]; first last.
 by exists (size s); apply/existsP; exists (in_tuple s) => /=.
 Qed.
 Definition length w := ex_minn (length_subproof w).
+Definition reduced := [qualify w : word | size w == length 's_[w]].
 
 Lemma length_out w : w \notin W -> length w = 0.
 Proof.
@@ -431,74 +385,62 @@ rewrite (negbTE Hw) /= => _ H.
 apply anti_leq; rewrite leq0n andbT; apply H.
 by apply/existsP; exists (in_tuple [::]).
 Qed.
-Lemma redwordP w : {s | w \in W -> 's[W]_[s] = w & length w = size s}.
+Lemma length_size w s : 's_[s] = w -> length w <= size s.
 Proof.
-suff : {s : (length w).-tuple I | (w \in W) ==> ('s[W]_[s] == w)}.
-  move=> [[s/= /eqP szs H]]; exists s; last by rewrite szs.
-  by move=> win; move: H; rewrite win /= => /eqP.
-apply sigW; rewrite /length => /=; case: ex_minnP => l /existsP[/= t].
-by move=> heq _; exists t.
-Qed.
-Definition redword w := let: exist2 s _ _ := redwordP w in s.
-Lemma redwordE w : w \in W -> 's_[redword w] = w.
-Proof. by rewrite /redword; case: redwordP. Qed.
-Lemma size_redword w : size (redword w) = length w.
-Proof. by rewrite /redword; case: redwordP. Qed.
-
-Lemma lengthP w : w \in W -> exists2 s, 's[W]_[s] = w & length w = size s.
-Proof.
-move=> win; exists (redword w); first exact: redwordE.
-by rewrite size_redword.
+rewrite /length; case: ex_minnP => m _ + eqs; apply.
+by apply/existsP; exists (in_tuple s); rewrite /= eqs eqxx implybT.
 Qed.
 Lemma lengthw s : length 's_[s] <= size s.
-Proof.
-rewrite /length; case: ex_minnP => l _ /(_ (size s)); apply.
-apply/existsP; exists (in_tuple s) => /=.
-by rewrite memcoxw eqxx.
-Qed.
+Proof. exact: length_size. Qed.
+
 Lemma length1 : length 1 = 0.
 Proof.
 rewrite -(coxnil W); apply/eqP.
 by rewrite -leqn0 (leq_trans (lengthw [::])).
 Qed.
-Lemma length0P w : w \in W -> length w = 0 -> w = 1.
-Proof. by move/lengthP => [s <- ->] /eqP/nilP ->; rewrite big_nil. Qed.
 
-Lemma reduced_lengthE s : (s \is reduced) = (size s == length 's_[s]).
+Lemma reducedE s : (s \is reduced) = (size s == length 's_[s]).
+Proof. by []. Qed.
+Fact redword_subproof w : {s | w \in W -> 's[W]_[s] = w & size s = length w}.
 Proof.
-apply/reducedP/eqP => [Hred | -> s' <-]; last exact: lengthw.
-apply anti_leq; rewrite lengthw ?memcoxw // andbT.
-have := Hred (redword 's_[s]) (redwordE _) => /(_ (memcoxw s)).
+suff : {s : (length w).-tuple I | (w \in W) ==> ('s[W]_[s] == w)}.
+  by move=> [[s/= /eqP szs H]]; exists s; first by move/(implyP H)/eqP.
+apply sigW; rewrite /length => /=; case: ex_minnP => l /existsP[/= t].
+by move=> heq _; exists t.
+Qed.
+Definition redword w := let: exist2 s _ _ := redword_subproof w in s.
+Lemma redwordE w : w \in W -> 's_[redword w] = w.
+Proof. by rewrite /redword; case: redword_subproof. Qed.
+Lemma size_redword w : size (redword w) = length w.
+Proof. by rewrite /redword; case: redword_subproof. Qed.
+Lemma redwordP w : redword w \is reduced.
+Proof.
+rewrite reducedE /redword; case: redword_subproof => s Hs.
+case: (boolP (w \in W)) => /= [/Hs->->//| wnotin].
+rewrite (length_out wnotin) => /eqP/nilP -> /=.
+by rewrite big_nil length1.
+Qed.
+Lemma lengthP w : w \in W -> exists2 s, 's[W]_[s] = w & length w = size s.
+Proof.
+move=> win; exists (redword w); first exact: redwordE.
 by rewrite size_redword.
 Qed.
+Lemma length0P w : w \in W -> length w = 0 -> w = 1.
+Proof. by move/lengthP => [s <- ->] /eqP/nilP ->; rewrite big_nil. Qed.
 Lemma reduced_length s : s \is reduced -> size s = length 's_[s].
-Proof. by rewrite reduced_lengthE => /eqP. Qed.
+Proof. by rewrite reducedE => /eqP. Qed.
 
-Lemma oddcox_subproof : satisfy (coxrels_of_mat 'M[W]) (fun => true).
+Lemma reducedP w :
+  reflect (forall w' : word, 's_[w'] = 's_[w] -> size w' >= size w)
+          (w \is reduced).
 Proof.
-apply/satisfyP=> /= [[l r] /allpairsP[[i j] /= [_ _ [->{l} ->{r}]]]].
-by rewrite cox_altseq_double big_nil expg1n.
+rewrite unfold_in; apply (iffP eqP) => [-> w'| le]; first exact: length_size.
+apply/anti_leq; rewrite lengthw andbT.
+by rewrite -size_redword le // redwordE // memcoxw.
 Qed.
-Definition oddcox : {morphism W >-> boolGroup} :=
-  let: exist m _ := presm_spec (coxpresP W) oddcox_subproof in m.
-Lemma oddcoxs i : oddcox 's_i = true.
-Proof. by rewrite /oddcox; case: presm_spec. Qed.
-Lemma oddcox_lenght w : w \in W -> oddcox w = odd (length w).
-Proof.
-rewrite -size_redword => /redwordE {1}<-.
-rewrite morph_prod => [|i _]; last exact: memcoxs.
-under eq_bigr do rewrite oddcoxs.
-elim: (redword w) => [|s0 s IHs]; first by rewrite big_nil.
-by rewrite big_cons {}IHs.
-Qed.
+Lemma reduced_nil : [::] \is reduced.
+Proof. exact/reducedP. Qed.
 
-Lemma lengths i : length 's_i = 1%N.
-Proof.
-rewrite -coxw1; apply anti_leq; have /= -> /= := lengthw [:: i].
-rewrite lt0n; apply/negP => /eqP Heq.
-have := erefl (oddcox 's_[[:: i]]).
-by rewrite {1}oddcox_lenght ?memcoxw // Heq big_seq1 oddcoxs.
-Qed.
 Lemma lengthV w : length w^-1 = length w.
 Proof.
 case: (boolP (w \in W)) => win; last by rewrite !length_out // groupV.
@@ -531,6 +473,71 @@ move=> H; rewrite -(lengthV v) -(lengthV w) -(lengthV (w * v)) invMg.
 by apply lenghtM_geq; rewrite -invMg groupV.
 Qed.
 
+
+Lemma reduced_tword_neq (i j : nat) s :
+  s \is reduced -> i < j < size s -> tword (take i.+1 s) != tword (take j.+1 s).
+Proof.
+move=> /reducedP sred /andP[ltij ltjs]; apply/negP => /eqP Heq.
+have leij := ltnW ltij. have lejs := ltnW ltjs.
+have:= erefl 's_[s]; rewrite -{1}(mul1g 's_[s]) -{1}(reflsK (tword_refl ltjs)).
+rewrite -{1}Heq {Heq} -mulgA Eq1_11 // big_cat /= mulgA.
+rewrite -(take_take ltij) Eq1_11 ?size_takel // -big_cat => {}/sred.
+rewrite !size_cat !size_drop (take_take leij) !size_takel ?(leq_trans leij) //.
+case: (size s) ltjs {leij lejs} => // sz; rewrite subSS ltnS.
+case: j ltij => // j; rewrite ltnS subSS => /subnKC ->{i}.
+case: sz => // sz; rewrite ltnS subSS => /subnKC ->{j}.
+by rewrite ltnNge leqnSn.
+Qed.
+Lemma reduced_tword_inj s :
+  s \is reduced ->
+  {in gtn (size s) &, injective (fun i : nat => tword (take i.+1 s)) }.
+Proof.
+move/reduced_tword_neq => H i j; rewrite !unfold_in /= => ltis ltjs eqtw.
+case: (ltngtP i j) => // cmpij; exfalso.
+- by have := H i j; rewrite eqtw eqxx cmpij ltjs /= => /(_ is_true_true).
+- by have := H j i; rewrite eqtw eqxx cmpij ltis /= => /(_ is_true_true).
+Qed.
+Lemma reduced_tword_uniq s :
+  s \is reduced -> uniq [seq tword (take i.+1 s) | i <- iota 0 (size s)].
+Proof.
+move/reduced_tword_inj => H.
+apply/(uniqPn 1) => [][i][j][ltij].
+rewrite size_map size_iota => ltjs.
+have ltis := (ltn_trans ltij ltjs).
+rewrite !(nth_map 1%N) ?size_iota // !nth_iota // !add0n => /H.
+by move/(_ ltis)/(_ ltjs) => Heq; rewrite Heq ltnn in ltij.
+Qed.
+
+
+Lemma oddcox_subproof : satisfy (coxrels_of_mat 'M[W]) (fun => true).
+Proof.
+apply/satisfyP=> /= [[l r] /allpairsP[[i j] /= [_ _ [->{l} ->{r}]]]].
+by rewrite cox_altseq_double big_nil expg1n.
+Qed.
+Definition oddcox : {morphism W >-> boolGroup} :=
+  let: exist m _ := presm_spec (coxpresP W) oddcox_subproof in m.
+Lemma oddcoxs i : oddcox 's_i = true.
+Proof. by rewrite /oddcox; case: presm_spec. Qed.
+Lemma oddcox_lenght w : w \in W -> oddcox w = odd (length w).
+Proof.
+rewrite -size_redword => /redwordE {1}<-.
+rewrite morph_prod => [|i _]; last exact: memcoxs.
+under eq_bigr do rewrite oddcoxs.
+elim: (redword w) => [|s0 s IHs]; first by rewrite big_nil.
+by rewrite big_cons {}IHs.
+Qed.
+
+Lemma lengths i : length 's_i = 1%N.
+Proof.
+rewrite -coxw1; apply anti_leq; have /= -> /= := lengthw [:: i].
+rewrite lt0n; apply/negP => /eqP Heq.
+have := erefl (oddcox 's_[[:: i]]).
+by rewrite {1}oddcox_lenght ?memcoxw // Heq big_seq1 oddcoxs.
+Qed.
+Lemma reduced1 i : [:: i] \is reduced.
+Proof. by rewrite reducedE big_seq1 lengths. Qed.
+
+
 Lemma length_coxsg i w :
   w \in W ->
   length ('s_i * w) = (length w).+1 \/ length ('s_i * w) = (length w).-1.
@@ -547,6 +554,8 @@ case: (ltngtP (length ('s_i * w)) (length w)) => Hlen; first last.
   exact/lenghtMC_geq/groupM.
 Qed.
 
+
+(** * Action by permutation on signed reflexions *)
 Structure coxrefl : predArgType :=
   CoxRefl { coxreflval :> gT; _ : coxreflval \in reflexions }.
 Canonical coxrefl_subType := Eval hnf in [subType for coxreflval].
@@ -563,6 +572,15 @@ Canonical coxrefl_subFinType := Eval hnf in [subFinType of coxrefl].
 
 Lemma coxreflP (t : coxrefl) : coxreflval t \in reflexions.
 Proof. by case: t. Qed.
+Hint Resolve coxreflP : core.
+Lemma coxreflW (t : coxrefl) : coxreflval t \in W.
+Proof. exact: reflsW. Qed.
+Hint Resolve coxreflW : core.
+
+Lemma coxreflK (t : coxrefl) : t * t = 1.
+Proof. by rewrite reflsK. Qed.
+Lemma coxreflV (t : coxrefl) : t ^-1 = t :> gT.
+Proof. by rewrite reflsV. Qed.
 
 Definition coxrefli i := CoxRefl (coxs_refls i).
 Definition coxreflJs (t : coxrefl) i :=
@@ -576,6 +594,8 @@ Lemma coxreflJsE t i : val (coxreflJs t i) = t ^ 's_i.
 Proof. by []. Qed.
 Lemma coxreflJwE t s : val (coxreflJw t s) = t ^ 's_[s].
 Proof. by []. Qed.
+
+
 
 Lemma reflb_eqE (p1 p2 : coxrefl * bool) :
   (p1 == p2) = (val p1.1 == val p2.1) && (p1.2 == p2.2).
@@ -677,7 +697,7 @@ Lemma permreflbm_inj : 'injm permreflbm.
 Proof.
 apply/subsetP => w; rewrite !inE => /andP[win]; apply contraLR => Hw.
 move: win Hw => /lengthP [s <-{w}] /esym/eqP.
-rewrite -reduced_lengthE => sred ntw1.
+rewrite -reducedE => sred ntw1.
 have {ntw1} : size s != 0 by apply/contra: ntw1 => /nilP ->; rewrite big_nil.
 rewrite -lt0n => lt0s.
 have Ht1 : tword (take 1 s) \in reflexions.
@@ -725,17 +745,17 @@ have impl w' t' : w' \in W -> oddntw w' t' -> (length (t' * w') < length w').
   by rewrite ltnS subSS subnKC.
 move=> win; apply/idP/idP; last exact: impl.
 apply contraLR => /negPf oddtwf; rewrite -leqNgt; apply ltnW.
-have tin := reflsW (coxreflP t).
+have tin := coxreflW t.
 have twin : t * w \in W by rewrite groupM.
 have tVwin : t^-1 * w \in W by rewrite groupM // groupV.
 have := permreflbmwE t false tVwin.
-rewrite (reflsV (coxreflP t)) morphM ?groupV //.
+rewrite coxreflV morphM ?groupV //.
 rewrite permM permreflbm_coxrefl /=.
 rewrite permreflbmwE // oddtwf mul1g mulg1 => [][_ /esym/impl]/(_ twin).
-by rewrite mulgA (reflsK (coxreflP t)) mul1g.
+by rewrite mulgA coxreflK mul1g.
 Qed.
 
-Theorem strong_exchange s (t : coxrefl) :
+Theorem strong_exchange_property s (t : coxrefl) :
   length (t * 's_[s]) < length 's_[s] ->
   exists2 i, i < size s & t * 's_[s] = 's_[take i s ++ drop i.+1 s].
 Proof.
@@ -744,6 +764,124 @@ rewrite (lengthM_oddntw _ sin) -(oddntwE _ (erefl _)).
 rewrite /ntw => /odd_has/hasP/= [tw /mapP[/= i]].
 rewrite mem_iota add0n /= => ltis ->{tw} /eqP<-.
 by rewrite Eq1_11 //; exists i.
+Qed.
+
+(** This is (a) <-> (c) of corollary 1.4.4 *)
+Corollary refl_reduced s (t : coxrefl) :
+  s \is reduced ->
+  (length (t * 's_[s]) < length 's_[s]) <->
+  exists2 i, i < size s & tword (take i.+1 s) = t :> gT.
+Proof.
+move=> sred; split => /= [|[i ltis <-{t}]].
+- move/strong_exchange_property => [i ltis].
+  by rewrite -Eq1_11 // => /mulIg ->; exists i.
+- rewrite Eq1_11 //; apply (leq_ltn_trans (lengthw _)).
+  rewrite size_cat (size_takel (ltnW ltis)) size_drop.
+  rewrite -(reduced_length sred); case: (size s) ltis => // l /ltnSE leil.
+  by rewrite ltnS subSS subnKC.
+Qed.
+
+Definition Tlft w := [set t : coxrefl | length (t * w) < length(w)].
+Definition Trgt w := [set t : coxrefl | length (w * t) < length(w)].
+
+Lemma TlftV w : Tlft (w ^-1) = Trgt w.
+Proof.
+rewrite /Tlft /Trgt; apply/setP => t; rewrite !inE lengthV.
+by rewrite -(lengthV (t * w^-1)) invMg invgK coxreflV.
+Qed.
+
+Corollary cardTlft w : #|Tlft w| = length w.
+Proof.
+rewrite /Tlft; case: (boolP (w \in W)) => win; first last.
+  rewrite length_out //; apply/eqP; rewrite cards_eq0 -subset0.
+  by apply/subsetP => t; rewrite !inE.
+have [s <-{w win} lens] := lengthP win; rewrite [RHS]lens.
+have/esym/eqP := lens; rewrite -reducedE => reds.
+pose trefl (i : 'I_(size s)) := CoxRefl (tword_refl (ltn_ord i)).
+have trefl_inj : injective trefl.
+  move=> i j /(congr1 val) /= => /reduced_tword_inj Heq.
+  by apply/val_inj => /=; rewrite Heq // unfold_in /=.
+have /= := card_imset setT trefl_inj.
+rewrite [X in _ = X]cardE /= enum_setT -enumT /= size_enum_ord => <-.
+congr #|pred_of_set _|; apply setP => t; rewrite !inE.
+apply/idP/imsetP => [/=| [[i ltis _ /(congr1 val) /= eqt]]];
+                      rewrite refl_reduced //.
+- by move=> [i ltis eqt]; exists (Ordinal ltis) => //; apply val_inj.
+- by exists i.
+Qed.
+
+Proposition deletion_property_take_drop s :
+  length 's_[s] < size s ->
+  exists (i j : nat), i < j < size s /\
+  's_[s] = 's_[take i s ++ drop i.+1 (take j s) ++ drop j.+1 s].
+Proof.
+case Hs : s  => [//| i0 s']; rewrite -{s'}Hs => ltls.
+have exnred : exists n, drop n s \isn't reduced.
+  by exists 0; rewrite drop0 reducedE (gtn_eqF ltls).
+have boundnred n : drop n s \isn't reduced -> n < (size s).
+  apply contraR; rewrite -ltnNge => /drop_oversize ->.
+  exact: reduced_nil.
+have boundnredW n : drop n s \isn't reduced -> n <= (size s).
+  by move/boundnred/ltnW.
+case: (ex_maxnP exnred boundnredW) => b bnred bmax {boundnredW exnred}.
+have ltbs := boundnred b bnred.
+have {}bmax : drop b.+1 s \is reduced.
+  by apply/negP => /negP/bmax; rewrite ltnn.
+have:= congr1 (fun s => 's[W]_[s]) (drop_nth i0 ltbs).
+rewrite big_cons => eqsdr.
+case: (length_coxsg (nth i0 s b) (memcoxw (drop b.+1 s))) => [|Heq].
+  rewrite -eqsdr -(reduced_length bmax) size_drop -subSn // subSS => Heq.
+  by move: bnred; rewrite reducedE size_drop -{}Heq eqxx.
+have {Heq} :
+    length ('s_(nth i0 s b) * 's_[drop b.+1 s]) < length 's_[drop b.+1 s].
+  rewrite Heq; case Hlen: (length 's_[drop b.+1 s]) => //; exfalso.
+  move: bmax; rewrite reducedE Hlen => /nilP Hrd.
+  by move: bnred; rewrite (drop_nth i0 ltbs) Hrd reduced1.
+have sti := coxs_refls (nth i0 s b).
+rewrite -['s_(nth i0 s b)]/(val (CoxRefl sti)).
+move/strong_exchange_property => [j ltjs] /=.
+rewrite -eqsdr drop_drop take_drop addSn => eqdr.
+exists b, (j + b.+1); split.
+  rewrite {1}addnS ltnS leq_addl /=.
+  by move: ltjs; rewrite size_drop ltn_subRL addnC.
+by rewrite -{1}(cat_take_drop b s) big_cat /= eqdr !big_cat /=.
+Qed.
+Proposition deletion_property_cat s :
+  length 's_[s] < size s ->
+  exists (A B C : seq I) (i j : I),
+    s = A ++ i :: B ++ j :: C /\ 's_[s] = 's_[A ++ B ++ C].
+Proof.
+case Hs: s => [//| s0 s']; rewrite -{s'}Hs.
+move/deletion_property_take_drop => [i][j][/andP[ltij ltjs] eqs].
+exists (take i s), (drop i.+1 (take j s)), (drop j.+1 s).
+exists (nth s0 s i), (nth s0 s j); split; last exact: eqs.
+rewrite -drop_nth //.
+have:= take_drop (j - i.+1) i.+1 s; rewrite subnK // => <-.
+have:= drop_drop s (j - i.+1) i.+1; rewrite subnK // => <-.
+by rewrite cat_take_drop -drop_nth ?(ltn_trans ltij ltjs) // cat_take_drop.
+Qed.
+
+(** This is proposition 1.4.8 (i) *)
+Proposition ex_subreduced s :
+  exists s', [/\ s' \is reduced,
+              's_[s] = 's_[s'],
+              subseq s' s &
+              odd (size s) = odd (size s')].
+Proof.
+have [n ltsn] := ubnP (size s); elim: n s ltsn => // n IHn s /ltnSE ltsn.
+case: (boolP (s \is reduced)) => [sred|snred]; first by exists s.
+move: snred; rewrite reducedE neq_ltn ltnNge lengthw /=.
+move/deletion_property_cat => [A][B][C][i][j][eqs eqss].
+have /IHn [s' [s'red eqs' subs' odds']]: size (A ++ B ++ C) < n.
+  apply: (leq_trans _ ltsn); rewrite eqs !size_cat /= !size_cat /=.
+  by rewrite !addnS ltnS.
+exists s'; split.
+- exact: s'red.
+- by rewrite eqss eqs'.
+- apply: (subseq_trans subs'); rewrite eqs subseq_cat2l.
+  apply: (subseq_trans _ (subseq_cons _ _)); rewrite subseq_cat2l.
+  exact: subseq_cons.
+- by rewrite -odds' eqs !size_cat /= !size_cat /= !addnS !oddS negbK.
 Qed.
 
 End Reflections.
