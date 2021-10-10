@@ -4,6 +4,7 @@
 -arg -w
 -arg -ambiguous-paths
 theories/coxsystem.v
+theories/explcox.v
 theories/natbar.v
 theories/present.v
 theories/ssrcompl.v
