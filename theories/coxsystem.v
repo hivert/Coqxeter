@@ -778,19 +778,24 @@ rewrite mem_iota add0n /= => ltis ->{tw} /eqP<-.
 by rewrite BBEq1_11 //; exists i.
 Qed.
 
-(** This is (a) <-> (c) of BB Corollary 1.4.4 *)
-Corollary refl_reduced s (t : coxrefl) :
-  s \is reduced ->
-  (length (t * 's_[s]) < length 's_[s]) <->
+(** This is (a) -> (c) of BB Corollary 1.4.4 *)
+Corollary twordM_length s (t : coxrefl) :
+  (length (t * 's_[s]) < length 's_[s]) ->
   exists2 i, i < size s & tword (take i.+1 s) = t :> gT.
 Proof.
-move=> sred; split => /= [|[i ltis <-{t}]].
-- move/strong_exchange_property => [i ltis].
-  by rewrite -BBEq1_11 // => /mulIg ->; exists i.
-- rewrite BBEq1_11 //; apply (leq_ltn_trans (lengthw _)).
-  rewrite size_cat (size_takel (ltnW ltis)) size_drop.
-  rewrite -(reduced_length sred); case: (size s) ltis => // l /ltnSE leil.
-  by rewrite ltnS subSS subnKC.
+move=> /strong_exchange_property => [[i ltis]].
+by rewrite -BBEq1_11 // => /mulIg ->; exists i.
+Qed.
+(** This is (c) -> (a) of BB Corollary 1.4.4 *)
+Corollary length_twordM s :
+  s \is reduced -> forall (i : nat), i < size s ->
+  (length (tword (take i.+1 s) * 's_[s]) < length 's_[s]).
+Proof.
+move=> sred i ltis.
+rewrite BBEq1_11 //; apply (leq_ltn_trans (lengthw _)).
+rewrite size_cat (size_takel (ltnW ltis)) size_drop.
+rewrite -(reduced_length sred); case: (size s) ltis => // l /ltnSE leil.
+by rewrite ltnS subSS subnKC.
 Qed.
 
 (** This is BB Eq 1.19 *)
@@ -818,10 +823,10 @@ have trefl_inj : injective trefl.
 have /= := card_imset setT trefl_inj.
 rewrite [X in _ = X]cardE /= enum_setT -enumT /= size_enum_ord => <-.
 congr #|pred_of_set _|; apply setP => t; rewrite !inE.
-apply/idP/imsetP => [/=| [[i ltis _ /(congr1 val) /= eqt]]];
-                      rewrite refl_reduced //.
-- by move=> [i ltis eqt]; exists (Ordinal ltis) => //; apply val_inj.
-- by exists i.
+apply/idP/imsetP => [/=| [[i ltis _ /(congr1 val) /= eqt]]].
+- move/twordM_length => [i ltis eqt].
+  by exists (Ordinal ltis) => //; apply val_inj.
+- by rewrite eqt length_twordM.
 Qed.
 
 (** This is BB Proposition 1.4.7 *)
@@ -876,7 +881,7 @@ have:= drop_drop s (j - i.+1) i.+1; rewrite subnK // => <-.
 by rewrite cat_take_drop -drop_nth ?(ltn_trans ltij ltjs) // cat_take_drop.
 Qed.
 
-(** This is proposition 1.4.8 (i) *)
+(** This is Proposition 1.4.8 (i) *)
 Proposition ex_subreduced s :
   exists s', [/\ s' \is reduced,
               's_[s] = 's_[s'],
@@ -897,6 +902,55 @@ exists s'; split.
   apply: (subseq_trans _ (subseq_cons _ _)); rewrite subseq_cat2l.
   exact: subseq_cons.
 - by rewrite -odds' eqs !size_cat /= !size_cat /= !addnS !oddS negbK.
+Qed.
+
+(** This is Proposition 1.4.8 (ii) *)
+Proposition set_reduced s1 s2 :
+  injective (fun i => 's_i) -> (* This needs the geometric realization *)
+  s1 \is reduced -> s2 \is reduced -> 's_[s1] = 's_[s2] ->
+  [set i in s1] = [set i in s2].
+Proof.
+move=> sinj.
+suff {s1 s2} incl u v : u \is reduced -> v \is reduced -> 's_[u] = 's_[v] ->
+  [set i in u] \subset [set i in v].
+  by move=> s1red s2red eqs; apply/eqP; rewrite eqEsubset !incl.
+case Hu : u => [|i0 u'].
+  by move=> _ /reducedP /[apply] /=; rewrite leqn0 => /nilP->.
+rewrite -{u'}Hu => redu redv eqs; apply/negP => /negP nsub.
+have {}nsub : exists j : 'I_(size u), (nth i0 u j \notin v).
+  apply/existsP; apply/contraR: nsub => /existsPn/= H.
+  apply/subsetP => i; rewrite !inE => ui.
+  have := ui; rewrite -index_mem => ltind.
+  by move/(_ (Ordinal ltind)) : H; rewrite negbK /= nth_index.
+have {}nsub : exists j, (j < size u) && (nth i0 u j \notin v).
+  by case: nsub => [j ltj]; exists j; rewrite ltj andbT.
+case: (ex_minnP nsub) => j /andP[ltjs notin jmin] {nsub}.
+have {}jmin n : n < j -> nth i0 u n \in v.
+  move=> ltnj; move/(_ n) : jmin => /contra.
+  by rewrite -ltnNge (ltn_trans ltnj ltjs) /= negbK; apply.
+have:= length_twordM redu ltjs; rewrite eqs.
+have trefl := tword_refl ltjs.
+rewrite -[tword _]/(val (CoxRefl trefl)) => /twordM_length [i ltis /=] {trefl}.
+rewrite /tword (take_nth i0 ltjs) (take_nth i0 ltis).
+rewrite !rev_rcons /= -!cats1 !big_cat !big_seq1 /= => /eqP.
+rewrite -{1}(revK (take j u)) !coxwrev -!mulgA.
+rewrite -conjgE eq_conjg invgK conjgE -!coxwrev !mulgA.
+rewrite -coxw1 -!big_cat /= -!catA => /eqP.
+set l := (X in 's_[X] = _).
+have [l0 [l0red -> l0sub _ eql0]] := ex_subreduced l.
+move/reduced_length: l0red notin; rewrite eql0 lengths.
+case: l0 eql0 l0sub => [//|l0 [|//]].
+rewrite sub1seq big_seq1 => /sinj ->{l0} + _.
+suff : {subset l <= v} by move => /[apply]->.
+have subtake x : x \in take j u -> x \in v.
+  move=> xintake; have/index_ltn/jmin := xintake.
+  by rewrite nth_index // (mem_take xintake).
+rewrite {}/l => x; rewrite !mem_cat inE => /or4P/=[||/eqP->|/orP[]].
+- rewrite mem_rev; exact: subtake.
+- by move/mem_take.
+- exact: mem_nth.
+- by rewrite mem_rev => /mem_take.
+- exact: subtake.
 Qed.
 
 End Reflections.
