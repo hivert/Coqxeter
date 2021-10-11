@@ -330,13 +330,13 @@ Proof. by move=> /reflsK t2; apply (mulgI t); rewrite t2 mulgV. Qed.
 
 Definition tword s := 's_[s ++ behead (rev s)].
 
-(** Eq 1.10 *)
+(** This is BB Eq 1.10 *)
 Lemma twordE s si : tword (rcons s si) = 's_[s] * 's_si * 's_[s]^-1.
 Proof.
 by rewrite /tword rev_rcons -cats1 -catA !big_cat /= big_seq1 coxwrev mulgA.
 Qed.
-(** Eq 1.11 *)
-Lemma Eq1_11 n s :
+(** This is BB Eq 1.11 *)
+Lemma BBEq1_11 n s :
   n < size s -> tword (take n.+1 s) * 's_[s] = 's_[take n s ++ drop n.+1 s].
 Proof.
 rewrite -{3}(cat_take_drop n.+1 s) !big_cat /= mulgA => ltns.
@@ -346,14 +346,15 @@ rewrite size_rcons -{2 3}cats1 big_cat /= => [][{2}<-].
 rewrite take_size_cat // /tword rev_rcons /= big_cat /=.
 by rewrite coxwrev !mulgA mulgKV -cats1 big_cat big_seq1 /= mulsK.
 Qed.
-Lemma Eq1_12 n s:
+(** This is BB Eq 1.12 *)
+Lemma BBEq1_12 n s:
   n <= size s ->
   's_[take n s] = \prod_(j <- rev (iota 1 n)) tword (take j s).
 Proof.
 elim: n => [| n IHn] ltns; first by rewrite /= take0 !big_nil.
 rewrite -{2}addn1 iotaD /= rev_cat big_cat /= big_seq1 -{}IHn ?(ltnW ltns) //.
 apply: (mulIg 's_[drop n s]).
-rewrite -[RHS]mulgA -[in RHS]big_cat cat_take_drop /= add1n Eq1_11 //.
+rewrite -[RHS]mulgA -[in RHS]big_cat cat_take_drop /= add1n BBEq1_11 //.
 rewrite -{1}(addn1 n) takeD -{2}(cat_take_drop 1 (drop n s)) drop_drop add1n.
 rewrite !big_cat /= mulgA.
 case: (drop n s) => [|l1 d] /=; first by rewrite big_nil !mulg1.
@@ -441,6 +442,7 @@ Qed.
 Lemma reduced_nil : [::] \is reduced.
 Proof. exact/reducedP. Qed.
 
+(** This is BB Proposition 1.4.2 (iv) *)
 Lemma lengthV w : length w^-1 = length w.
 Proof.
 case: (boolP (w \in W)) => win; last by rewrite !length_out // groupV.
@@ -449,6 +451,7 @@ suff {w win}lenle w' : w' \in W -> length w'^-1 <= length w'.
 move: w' => w /lengthP [s <-{w} ->]; rewrite -coxwrev.
 by rewrite -size_rev lengthw.
 Qed.
+(** This is BB Proposition 1.4.2 (v) left *)
 Lemma lenghtM_leq v w : v \in W -> length (v * w) <= length v + length w.
 Proof.
 move=> vin; case: (boolP (w \in W)) => win; first last.
@@ -457,6 +460,7 @@ move/lengthP: vin => [s <- ->{v}].
 move/lengthP: win => [t <- ->{w}].
 by rewrite -big_cat /= -size_cat lengthw.
 Qed.
+(** This is BB Proposition 1.4.2 (v) right *)
 Lemma lenghtM_geq v w :
   v * w \in W -> length v - length w <= length (v * w).
 Proof.
@@ -473,15 +477,15 @@ move=> H; rewrite -(lengthV v) -(lengthV w) -(lengthV (w * v)) invMg.
 by apply lenghtM_geq; rewrite -invMg groupV.
 Qed.
 
-
+(** This is BB Lemma 1.3.1 *)
 Lemma reduced_tword_neq (i j : nat) s :
   s \is reduced -> i < j < size s -> tword (take i.+1 s) != tword (take j.+1 s).
 Proof.
 move=> /reducedP sred /andP[ltij ltjs]; apply/negP => /eqP Heq.
 have leij := ltnW ltij. have lejs := ltnW ltjs.
 have:= erefl 's_[s]; rewrite -{1}(mul1g 's_[s]) -{1}(reflsK (tword_refl ltjs)).
-rewrite -{1}Heq {Heq} -mulgA Eq1_11 // big_cat /= mulgA.
-rewrite -(take_take ltij) Eq1_11 ?size_takel // -big_cat => {}/sred.
+rewrite -{1}Heq {Heq} -mulgA BBEq1_11 // big_cat /= mulgA.
+rewrite -(take_take ltij) BBEq1_11 ?size_takel // -big_cat => {}/sred.
 rewrite !size_cat !size_drop (take_take leij) !size_takel ?(leq_trans leij) //.
 case: (size s) ltjs {leij lejs} => // sz; rewrite subSS ltnS.
 case: j ltij => // j; rewrite ltnS subSS => /subnKC ->{i}.
@@ -514,10 +518,12 @@ Proof.
 apply/satisfyP=> /= [[l r] /allpairsP[[i j] /= [_ _ [->{l} ->{r}]]]].
 by rewrite cox_altseq_double big_nil expg1n.
 Qed.
+(** This is epsilon of BB Lemma 1.4.1 *)
 Definition oddcox : {morphism W >-> boolGroup} :=
   let: exist m _ := presm_spec (coxpresP W) oddcox_subproof in m.
 Lemma oddcoxs i : oddcox 's_i = true.
 Proof. by rewrite /oddcox; case: presm_spec. Qed.
+(** This is BB Proposition 1.4.2 (i) *)
 Lemma oddcox_lenght w : w \in W -> oddcox w = odd (length w).
 Proof.
 rewrite -size_redword => /redwordE {1}<-.
@@ -536,8 +542,10 @@ by rewrite {1}oddcox_lenght ?memcoxw // Heq big_seq1 oddcoxs.
 Qed.
 Lemma reduced1 i : [:: i] \is reduced.
 Proof. by rewrite reducedE big_seq1 lengths. Qed.
+Lemma coxs_neq1 i : 's_i != 1.
+Proof. by apply/negP => /eqP/(congr1 length); rewrite lengths length1. Qed.
 
-
+(** This is BB Proposition 1.4.2 (iii) *)
 Lemma length_coxsg i w :
   w \in W ->
   length ('s_i * w) = (length w).+1 \/ length ('s_i * w) = (length w).-1.
@@ -582,13 +590,13 @@ Proof. by rewrite reflsK. Qed.
 Lemma coxreflV (t : coxrefl) : t ^-1 = t :> gT.
 Proof. by rewrite reflsV. Qed.
 
-Definition coxrefli i := CoxRefl (coxs_refls i).
+Definition coxrefls i := CoxRefl (coxs_refls i).
 Definition coxreflJs (t : coxrefl) i :=
   CoxRefl (conjs_refls i (coxreflP t)).
 Definition coxreflJw (t : coxrefl) (s : seq I) :=
   CoxRefl (conj_refls (memcoxw s) (coxreflP t)).
 
-Lemma coxrefliE i : val (coxrefli i) = 's_i.
+Lemma coxreflsE i : val (coxrefls i) = 's_i.
 Proof. by []. Qed.
 Lemma coxreflJsE t i : val (coxreflJs t i) = t ^ 's_i.
 Proof. by []. Qed.
@@ -618,7 +626,7 @@ Proof. by apply/permP => p; rewrite !permE /= !permE actreflbK. Qed.
 
 Definition ntw s t :=
   (count_mem t [seq tword (take i.+1 s) | i <- iota 0 (size s)]).
-(** This is eta of Equation 1.17 *)
+(** This is eta of BB Equation 1.17 *)
 Definition oddntw w (t : coxrefl) := odd (ntw (redword w) (val t)).
 
 Lemma permreflbsE s (t : coxrefl) (e : bool) :
@@ -630,7 +638,7 @@ rewrite -cats1 !big_cat /= !big_seq1.
 rewrite permM ![permreflb sn _]permE /=.
 move: IHs => /andP [/eqP-> /eqP->].
 rewrite -conjgM -mulgA eqxx /=; apply/eqP; congr (_ * _).
-(** This is the recursion of Eq (1.15). *)
+(** This is the recursion of BB Eq (1.15). *)
 have takes n : n < size s -> take n.+1 (rcons s sn) = take n.+1 s.
   by move=> Hn; rewrite -cats1 takel_cat.
 rewrite /ntw cats1 size_rcons -{1}addn1 iotaD add0n map_cat count_cat.
@@ -666,11 +674,13 @@ rewrite doubleD -(cat_take_drop 'M_(i, j).*2 (altseq i j (_ + _))).
 rewrite take_altseq ?leq_addr // drop_altseq odd_double addKn big_cat /=.
 by rewrite !cox_altseq_double coxrelP mul1g.
 Qed.
+(** This is the mapping of BB Theorem 1.3.2 *)
 Definition permreflbm : {morphism W >-> {perm coxrefl * bool}} :=
   let: exist m _ := presm_spec (coxpresP W) permreflb_coxrel in m.
+
 Lemma permreflbmE i : permreflbm 's_i = permreflb i.
 Proof. by rewrite /permreflbm;  case: presm_spec. Qed.
-(** This is Eq 1.16 *)
+(** This is BB Eq 1.16 *)
 Lemma permreflbmsE s (t : coxrefl) (e : bool) :
   permreflbm 's_[s] (t, e) = (coxreflJw t s, e * odd (ntw s (val t))).
 Proof.
@@ -686,14 +696,14 @@ have:= permreflbmsE s t false.
 have := memcoxw s; rewrite eqw => /redwordE {1}<-.
 by rewrite permreflbmsE !mul1g => [] [_ -> /=].
 Qed.
-(** This is Eq 1.18 *)
+(** This is BB Eq 1.18 *)
 Lemma permreflbmwE w (t : coxrefl) (e : bool) :
   w \in W ->
   permreflbm w (t, e) = (coxreflJw t (redword w), e * oddntw w t).
 Proof. by move=> win; rewrite -{1}(redwordE win) permreflbmsE. Qed.
 
-
-Lemma permreflbm_inj : 'injm permreflbm.
+(** This is BB Theorem 1.3.2 (i) *)
+Theorem permreflbm_inj : 'injm permreflbm.
 Proof.
 apply/subsetP => w; rewrite !inE => /andP[win]; apply contraLR => Hw.
 move: win Hw => /lengthP [s <-{w}] /esym/eqP.
@@ -710,6 +720,7 @@ rewrite /ntw (count_uniq_mem _ (reduced_tword_uniq sred)).
 by apply/eqP; rewrite eqb1; apply: map_f; rewrite mem_iota /= add0n.
 Qed.
 
+(** This is BB Theorem 1.3.2 (ii) *)
 Lemma permreflbm_coxrefl (t : coxrefl) e : permreflbm t (t, e) = (t, ~~ e).
 Proof.
 have /imset2P [i w _ /(memcoxP W) [s <-{w} eqt]]:= coxreflP t.
@@ -730,16 +741,16 @@ rewrite eq_conjg coxsV conjgg -addNb -mulgA.
 by case: ('s_sn == _); rewrite mulg1.
 Qed.
 
-Lemma odd_has T (s : seq T) (P : pred T) : odd (count P s) -> has P s.
+Lemma odd_count_has T (s : seq T) (P : pred T) : odd (count P s) -> has P s.
 Proof. by rewrite has_count; case: count. Qed.
 
 Lemma lengthM_oddntw w (t : coxrefl) :
   w \in W -> (length (t * w) < length w) = oddntw w t.
 Proof.
 have impl w' t' : w' \in W -> oddntw w' t' -> (length (t' * w') < length w').
-  rewrite /oddntw /ntw => win /odd_has/hasP/= [tw /mapP[/= i]].
+  rewrite /oddntw /ntw => win /odd_count_has/hasP/= [tw /mapP[/= i]].
   rewrite mem_iota add0n /= => ltis ->{tw} /eqP<-.
-  rewrite -{2}(redwordE win) Eq1_11 //; apply (leq_ltn_trans (lengthw _)).
+  rewrite -{2}(redwordE win) BBEq1_11 //; apply (leq_ltn_trans (lengthw _)).
   rewrite size_cat (size_takel (ltnW ltis)) size_drop.
   move: ltis; rewrite size_redword; case: (length w') => // l /ltnSE leil.
   by rewrite ltnS subSS subnKC.
@@ -755,18 +766,19 @@ rewrite permreflbmwE // oddtwf mul1g mulg1 => [][_ /esym/impl]/(_ twin).
 by rewrite mulgA coxreflK mul1g.
 Qed.
 
+(** This is BB Theorem 1.4.3 *)
 Theorem strong_exchange_property s (t : coxrefl) :
   length (t * 's_[s]) < length 's_[s] ->
   exists2 i, i < size s & t * 's_[s] = 's_[take i s ++ drop i.+1 s].
 Proof.
 have sin := memcoxw s.
 rewrite (lengthM_oddntw _ sin) -(oddntwE _ (erefl _)).
-rewrite /ntw => /odd_has/hasP/= [tw /mapP[/= i]].
+rewrite /ntw => /odd_count_has/hasP/= [tw /mapP[/= i]].
 rewrite mem_iota add0n /= => ltis ->{tw} /eqP<-.
-by rewrite Eq1_11 //; exists i.
+by rewrite BBEq1_11 //; exists i.
 Qed.
 
-(** This is (a) <-> (c) of corollary 1.4.4 *)
+(** This is (a) <-> (c) of BB Corollary 1.4.4 *)
 Corollary refl_reduced s (t : coxrefl) :
   s \is reduced ->
   (length (t * 's_[s]) < length 's_[s]) <->
@@ -774,13 +786,14 @@ Corollary refl_reduced s (t : coxrefl) :
 Proof.
 move=> sred; split => /= [|[i ltis <-{t}]].
 - move/strong_exchange_property => [i ltis].
-  by rewrite -Eq1_11 // => /mulIg ->; exists i.
-- rewrite Eq1_11 //; apply (leq_ltn_trans (lengthw _)).
+  by rewrite -BBEq1_11 // => /mulIg ->; exists i.
+- rewrite BBEq1_11 //; apply (leq_ltn_trans (lengthw _)).
   rewrite size_cat (size_takel (ltnW ltis)) size_drop.
   rewrite -(reduced_length sred); case: (size s) ltis => // l /ltnSE leil.
   by rewrite ltnS subSS subnKC.
 Qed.
 
+(** This is BB Eq 1.19 *)
 Definition Tlft w := [set t : coxrefl | length (t * w) < length(w)].
 Definition Trgt w := [set t : coxrefl | length (w * t) < length(w)].
 
@@ -790,6 +803,7 @@ rewrite /Tlft /Trgt; apply/setP => t; rewrite !inE lengthV.
 by rewrite -(lengthV (t * w^-1)) invMg invgK coxreflV.
 Qed.
 
+(** This is BB Corollary 1.4.5 *)
 Corollary cardTlft w : #|Tlft w| = length w.
 Proof.
 rewrite /Tlft; case: (boolP (w \in W)) => win; first last.
@@ -810,6 +824,7 @@ apply/idP/imsetP => [/=| [[i ltis _ /(congr1 val) /= eqt]]];
 - by exists i.
 Qed.
 
+(** This is BB Proposition 1.4.7 *)
 Proposition deletion_property_take_drop s :
   length 's_[s] < size s ->
   exists (i j : nat), i < j < size s /\
