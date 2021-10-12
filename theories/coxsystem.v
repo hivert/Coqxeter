@@ -26,10 +26,19 @@ Unset Printing Implicit Defensive.
 
 Open Scope group_scope.
 
-Local Reserved Notation "''s_' i" (at level 2, format "''s_' i").
-Local Reserved Notation "''s_' [ w ] "
+Reserved Notation "''I[' g ]" (format "''I[' g ]").
+Reserved Notation "''S[' g ]" (format "''S[' g ]").
+
+Reserved Notation "''M'" (at level 8, format "''M'").
+Reserved Notation "''M_' ( m , n )" (at level 8, format "''M_' ( m ,  n )").
+Reserved Notation "''M[' W ]" (at level 8).
+Reserved Notation "''M[' W ]_ ( m , n )" (at level 8).
+
+Reserved Notation "''s_' i" (at level 2, format "''s_' i").
+Reserved Notation "''s_' [ w ] "
       (at level 2, w at level 100, format "''s_' [ w ]").
-Local Reserved Notation "''M_' p" (at level 2, format "''M_' p").
+Reserved Notation "''s[' W ]_ i" (at level 2, i at level 100).
+Reserved Notation "''s[' W ]_ [ w ] " (at level 2, w at level 100).
 
 Definition biggseq := (big_cons, big_nil, mulg1, mulgA).
 
@@ -229,16 +238,18 @@ Notation "[ 'coxgrp' 'of' G ]" := (clone_coxgrp (@coxgrp _ G))
   (at level 0, format "[ 'coxgrp'  'of'  G ]") : form_scope.
 Notation coxsys G := (coxsys_of (clone_coxgrp (@coxgrp _ G))).
 
-Notation "''I[' g ]" := (@coxind _ _ (coxsys g)) (format "''I[' g ]").
-Notation "''S[' g ]" := (@coxgen _ _ (coxsys g)) (format "''S[' g ]").
-Notation "''s[' g ']_' i" := ('S[g] i) (at level 2).
-Notation "''M[' g ']'" := (@coxmat _ _ (coxsys g))
-                            (format "''M[' g ]", at level 2).
-Notation "''M[' g ']_' p" := ('M[g] p) (at level 2).
-Notation "''s[' g ']_' [ w ] " := (\prod_(i <- w) 's[g]_i) (at level 2).
-Notation "''s_' i" := ('s[_]_i).
-Notation "''s_' [ w ] " := (\prod_(i <- w) 's_i).
-Notation "''M_' p" := ('M[_]_p).
+Notation "''I[' g ]" := (@coxind _ _ (coxsys g)).
+Notation "''S[' g ]" := (@coxgen _ _ (coxsys g)).
+
+Notation "''M[' g ']'" := (@coxmat _ _ (coxsys g)).
+Notation "''M'" := 'M[_].
+Notation "''M[' g ]_ ( i , j )" := ('M[g] (i, j)).
+Notation "''M_' ( i , j )" := ('M[ _ ]_(i, j)).
+
+Notation "''s[' g ]_ i" := ('S[g] i) : group_scope.
+Notation "''s[' g ']_' [ w ] " := (\prod_(i <- w) 's[g]_i) : group_scope.
+Notation "''s_' i" := ('s[_]_i) : group_scope.
+Notation "''s_[' w ]" := (\prod_(i <- w) 's_i) : group_scope.
 
 
 Section Basic.
@@ -304,11 +315,11 @@ End Basic.
 Section Reflections.
 
 Variables (gT : finGroupType) (W : {coxgrp gT}).
-Local Notation I := 'I[W].
-Local Notation word := (seq I).
-Implicit Types (i : I) (s : word).
+Local Notation "''I'" := 'I[W].
+Local Notation word := (seq 'I).
+Implicit Types (i : 'I) (s : word).
 
-Definition reflexions := [set 's_i ^ w | i in I, w in W].
+Definition reflexions := [set 's_i ^ w | i in 'I, w in W].
 
 Lemma reflsW t : t \in reflexions -> t \in W.
 Proof. by move/imset2P => [i w _ /groupJr + ->] => ->; apply memcoxs. Qed.
@@ -370,7 +381,7 @@ Qed.
 
 (** * Length and reduced words *)
 Fact length_subproof w :
-  exists n : nat, [exists t : n.-tuple I, (w \in W) ==> ('s_[t] == w)].
+  exists n : nat, [exists t : n.-tuple 'I, (w \in W) ==> ('s_[t] == w)].
 Proof.
 case: (boolP (w \in W)) => [/memcoxP [s <-] | _]; first last.
   by exists 0; apply/existsP; exists (in_tuple [::]).
@@ -404,7 +415,7 @@ Lemma reducedE s : (s \is reduced) = (size s == length 's_[s]).
 Proof. by []. Qed.
 Fact redword_subproof w : {s | w \in W -> 's[W]_[s] = w & size s = length w}.
 Proof.
-suff : {s : (length w).-tuple I | (w \in W) ==> ('s[W]_[s] == w)}.
+suff : {s : (length w).-tuple 'I | (w \in W) ==> ('s[W]_[s] == w)}.
   by move=> [[s/= /eqP szs H]]; exists s; first by move/(implyP H)/eqP.
 apply sigW; rewrite /length => /=; case: ex_minnP => l /existsP[/= t].
 by move=> heq _; exists t.
@@ -593,7 +604,7 @@ Proof. by rewrite reflsV. Qed.
 Definition coxrefls i := CoxRefl (coxs_refls i).
 Definition coxreflJs (t : coxrefl) i :=
   CoxRefl (conjs_refls i (coxreflP t)).
-Definition coxreflJw (t : coxrefl) (s : seq I) :=
+Definition coxreflJw (t : coxrefl) (s : seq 'I) :=
   CoxRefl (conj_refls (memcoxw s) (coxreflP t)).
 
 Lemma coxreflsE i : val (coxrefls i) = 's_i.
@@ -868,7 +879,7 @@ by rewrite -{1}(cat_take_drop b s) big_cat /= eqdr !big_cat /=.
 Qed.
 Proposition deletion_property_cat s :
   length 's_[s] < size s ->
-  exists (A B C : seq I) (i j : I),
+  exists (A B C : seq 'I) (i j : 'I),
     s = A ++ i :: B ++ j :: C /\ 's_[s] = 's_[A ++ B ++ C].
 Proof.
 case Hs: s => [//| s0 s']; rewrite -{s'}Hs.
