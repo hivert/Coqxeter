@@ -197,6 +197,24 @@ rewrite /commute => /(congr1 (mulg ('s_ j * 's_ i))).
 by rewrite mulg1 !mulgA coxmat_mulsK coxmat_mulss mul1g.
 Qed.
 
+Lemma coxmat_wrev s : 's_[rev s] = 's_[s] ^-1.
+Proof.
+elim: s => [|s0 s IHs]; first by rewrite !big_nil invg1.
+by rewrite rev_cons -cats1 big_cat big_seq1 !big_cons /= {}IHs invMg coxmat_sV.
+Qed.
+Lemma coxmat_braid i j :
+  's_[altseq i j (M (i, j))] = 's_[altseq j i (M (i, j))].
+Proof.
+set m := (M _); apply (mulIg 's_[altseq j i m]^-1); rewrite mulgV.
+have : (altseq i j m.*2, [::]) \in coxrels_of_mat M.
+  apply/allpairsP; exists (i, j) => /=.
+  by split; [exact: mem_enum|exact: mem_enum|].
+move=> /(satisfyP _ _ sat); rewrite /= big_nil => {3}<-.
+rewrite -[in RHS](cat_take_drop m (altseq _ _ _)).
+rewrite take_altseq -?addnn ?leq_addl // big_cat /=.
+by rewrite -coxmat_wrev rev_altseq drop_altseq addnK.
+Qed.
+
 End CoxeterMatrix.
 
 
@@ -247,9 +265,9 @@ Notation "''M[' g ]_ ( i , j )" := ('M[g] (i, j)).
 Notation "''M_' ( i , j )" := ('M[ _ ]_(i, j)).
 
 Notation "''s[' g ]_ i" := ('S[g] i) : group_scope.
-Notation "''s[' g ']_' [ w ] " := (\prod_(i <- w) 's[g]_i) : group_scope.
+Notation "''s[' g ]_ [ w ] " := (\prod_(i <- w) 's[g]_i) : group_scope.
 Notation "''s_' i" := ('s[_]_i) : group_scope.
-Notation "''s_[' w ]" := (\prod_(i <- w) 's_i) : group_scope.
+Notation "''s_' [ w ]" := (\prod_(i <- w) 's_i) : group_scope.
 
 
 Section Basic.
@@ -288,24 +306,14 @@ Proof.
 by apply (iffP idP) => [/memcoxwP|] [] s <-{w}; [exists s | exact: memcoxw].
 Qed.
 
-Lemma coxrelP i j :  ('s_i * 's_j) ^+ 'M_(i, j) = 1.
-Proof. exact: coxmat_rel. Qed.
-Lemma mulss i : 's_i * 's_i = 1.
-Proof. exact: (coxmat_mulss coxmatP). Qed.
-Lemma coxsV i : 's_i ^-1 = 's_i.
-Proof. exact: (coxmat_sV coxmatP). Qed.
-Lemma mulKs i : cancel (mulg 's_i) (mulg 's_i).
-Proof. exact: (coxmat_mulKs coxmatP). Qed.
-Lemma mulsK i : cancel (mulg^~ 's_i) (mulg^~ 's_i).
-Proof. exact: (coxmat_mulsK coxmatP). Qed.
-Lemma coxsC i j : 'M_(i, j) = 2 -> commute 's_i 's_j.
-Proof. exact: (coxmat_sC coxmatP). Qed.
-
-Lemma coxwrev s : 's_[rev s] = 's_[s] ^-1.
-Proof.
-elim: s => [|s0 s IHs]; first by rewrite !big_nil invg1.
-by rewrite rev_cons -cats1 big_cat big_seq1 !big_cons /= {}IHs invMg coxsV.
-Qed.
+Definition coxrelP := coxmat_rel coxsat.
+Definition mulss := coxmat_mulss coxmatP coxsat.
+Definition coxsV := coxmat_sV coxmatP coxsat.
+Definition mulKs := coxmat_mulKs coxmatP coxsat.
+Definition mulsK := coxmat_mulsK coxmatP coxsat.
+Definition coxsC := coxmat_sC coxmatP coxsat.
+Definition coxwrev := coxmat_wrev coxmatP coxsat.
+Definition coxbraid := coxmat_braid coxmatP coxsat.
 
 End Basic.
 #[export] Hint Resolve coxsat coxmatP : core.
@@ -360,12 +368,13 @@ Qed.
 (** This is BB Eq 1.12 *)
 Lemma BBEq1_12 n s:
   n <= size s ->
-  's_[take n s] = \prod_(j <- rev (iota 1 n)) tword (take j s).
+  's_[take n s] = \prod_(j <- rev (iota 0 n)) tword (take j.+1 s).
 Proof.
 elim: n => [| n IHn] ltns; first by rewrite /= take0 !big_nil.
-rewrite -{2}addn1 iotaD /= rev_cat big_cat /= big_seq1 -{}IHn ?(ltnW ltns) //.
+rewrite -{2}addn1 iotaD add0n rev_cat big_cat /= big_seq1.
+move/(_ (ltnW ltns)) : IHn => <-.
 apply: (mulIg 's_[drop n s]).
-rewrite -[RHS]mulgA -[in RHS]big_cat cat_take_drop /= add1n BBEq1_11 //.
+rewrite -[RHS]mulgA -[in RHS]big_cat cat_take_drop /= BBEq1_11 //.
 rewrite -{1}(addn1 n) takeD -{2}(cat_take_drop 1 (drop n s)) drop_drop add1n.
 rewrite !big_cat /= mulgA.
 case: (drop n s) => [|l1 d] /=; first by rewrite big_nil !mulg1.
@@ -555,6 +564,15 @@ Lemma reduced1 i : [:: i] \is reduced.
 Proof. by rewrite reducedE big_seq1 lengths. Qed.
 Lemma coxs_neq1 i : 's_i != 1.
 Proof. by apply/negP => /eqP/(congr1 length); rewrite lengths length1. Qed.
+Lemma length1P w :
+  reflect (exists i, w = 's_i) (length w == 1%N).
+Proof.
+apply (iffP eqP) => [l1 | [i ->]]; last exact: lengths.
+case: (boolP (w \in W)) => [|/length_out]; last by rewrite l1.
+move/lengthP => [s {2}<-]; rewrite {w}l1.
+by case: s => [|s0[|]]// _; exists s0; rewrite big_seq1.
+Qed.
+
 
 (** This is BB Proposition 1.4.2 (iii) *)
 Lemma length_coxsg i w :
@@ -916,8 +934,8 @@ exists s'; split.
 Qed.
 
 (** This is Proposition 1.4.8 (ii) *)
-Proposition set_reduced s1 s2 :
-  injective (fun i => 's_i) -> (* This needs the geometric realization *)
+Proposition inj_set_reduced s1 s2 :
+  injective (fun i => 's_i) -> (* This will be proved later *)
   s1 \is reduced -> s2 \is reduced -> 's_[s1] = 's_[s2] ->
   [set i in s1] = [set i in s2].
 Proof.
