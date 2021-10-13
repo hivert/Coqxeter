@@ -17,14 +17,14 @@ Require Import mathcomp.ssreflect.ssreflect.
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq.
 From mathcomp Require Import choice fintype finset finfun order fingraph.
 From mathcomp Require Import tuple bigop fingroup perm morphism alt gproduct.
-Require Import present.
+Require Import ssrcompl present.
 
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-Open Scope group_scope.
+Import GroupScope.
 
 Reserved Notation "''I[' g ]" (format "''I[' g ]").
 Reserved Notation "''S[' g ]" (format "''S[' g ]").
@@ -41,18 +41,6 @@ Reserved Notation "''s[' W ]_ i" (at level 2, i at level 100).
 Reserved Notation "''s[' W ]_ [ w ] " (at level 2, w at level 100).
 
 Definition biggseq := (big_cons, big_nil, mulg1, mulgA).
-
-Section GroupCompl.
-
-Variables (gT : finGroupType) (W : {group gT}).
-
-Lemma conjgg (x : gT) : x ^ x = x.
-Proof. by rewrite conjgE mulKg. Qed.
-
-Lemma eq_conjg (x y z : gT) : (x == y ^ z) = (x ^ (z ^-1) == y).
-Proof. by rewrite -(inj_eq (conjg_inj z ^-1)) -conjgM mulgV conjg1. Qed.
-
-End GroupCompl.
 
 
 (** ** Alternating sequences *)
@@ -184,11 +172,11 @@ Proof. by move/sat_coxmatP: sat => ->. Qed.
 Lemma coxmat_mulss i : 's_i * 's_i = 1.
 Proof. by move/sat_coxmatP: sat => /(_ i i); rewrite coxmdiag. Qed.
 Lemma coxmat_sV i : 's_i ^-1 = 's_i.
-Proof. by rewrite -[LHS](mul1g) -(coxmat_mulss i) mulgK. Qed.
+Proof. by rewrite inv_sq1 ?coxmat_mulss. Qed.
 Lemma coxmat_mulKs i : cancel (mulg 's_i) (mulg 's_i).
-Proof. by move=> x; rewrite mulgA coxmat_mulss mul1g. Qed.
+Proof. by move=> x; rewrite -{1}(coxmat_sV i) mulKg. Qed.
 Lemma coxmat_mulsK i : cancel (mulg^~ 's_i) (mulg^~ 's_i).
-Proof. by move=> x; rewrite -mulgA coxmat_mulss mulg1. Qed.
+Proof. by move=> x; rewrite -{2}(coxmat_sV i) mulgK. Qed.
 
 Lemma coxmat_sC i j : M (i, j) = 2 -> commute 's_i 's_j.
 Proof.

@@ -16,15 +16,18 @@
 Require Import mathcomp.ssreflect.ssreflect.
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq.
 From mathcomp Require Import choice fintype finset finfun order fingraph.
-From mathcomp Require Import tuple bigop fingroup perm morphism alt gproduct.
-Require Import present coxsystem.
+From mathcomp Require Import bigop fingroup perm morphism alt gproduct action.
+From mathcomp Require Import ssralg zmodp div.
+Require Import ssrcompl present coxsystem.
 
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-Open Scope group_scope.
+Import GRing.Theory.
+Import GroupScope.
+
 
 Section Triv.
 
@@ -66,16 +69,133 @@ Qed.
 Canonical bool_coxgrp := CoxGrp (CoxSys bool_coxmatP bool_present).
 
 
+Section Dihedral.
+
+Variable (n0 : nat).
+Local Notation n := n0.+2.
+
+(** We construct the Dihedral group as the semi-direct product Zn X| Bool *)
+Definition bact (i : 'I_n) (b : bool) : 'I_n :=
+  if b then (-i)%R else i.
+
+Fact bactF : bact^~ false =1 id.
+Proof. by []. Qed.
+Fact bact_morph i : act_morph bact i.
+Proof. by case => [][]//=; rewrite opprK. Qed.
+Definition bact_action := TotalAction bactF bact_morph.
+
+Fact bactP : is_groupAction [set: 'I_n] bact_action.
+Proof.
+move=> b _; rewrite inE; apply/andP; split.
+  by apply/subsetP => i; rewrite !inE.
+apply/morphicP=> /= i j _ _; rewrite !actpermE /=.
+by case: b => //=; rewrite opprD.
+Qed.
+Definition bact_gaction := GroupAction bactP.
+Definition dihedral := sdprod_by bact_gaction.
+
+Definition dh1 : dihedral := sdpair2 _ true.
+Definition dh2 : dihedral := sdpair2 _ true * sdpair1 _ Zp1.
+
+Lemma dh1K : dh1 * dh1 = 1.
+Proof. by rewrite -morphM //= morph1. Qed.
+Lemma dh1V : dh1 ^-1 =  dh1.
+Proof. by rewrite inv_sq1 ?dh1K. Qed.
+Lemma dh2K : dh2 * dh2 = 1.
+Proof.
+apply val_inj; rewrite /= !val_insubd !inE /= !(mulg1, mul1g).
+apply/eqP; rewrite xpair_eqE eqxx /=.
+by rewrite /mulg /= addNr.
+Qed.
+Lemma dh2V : dh2 ^-1 =  dh2.
+Proof. by rewrite inv_sq1 ?dh2K. Qed.
+
+
+Lemma dh12E : dh1 * dh2 = sdpair1 _ Zp1.
+Proof.
+rewrite /dh1 /dh2; apply val_inj => /=.
+rewrite !val_insubd !inE /= !(mulg1, mul1g).
+apply/eqP; rewrite xpair_eqE eqxx /=.
+by rewrite oppr0 /mulg /= add0r.
+Qed.
+Lemma dh12xnE : (dh1 * dh2) ^+ n = 1.
+Proof.
+rewrite dh12E -morphX ?inE //=.
+by rewrite [X in sdpair1 _ X](_ : _ = 1) ?morph1 // Zp_expn.
+Qed.
+Lemma dh21xnE : (dh2 * dh1) ^+ n = 1.
+Proof. by apply invg_inj; rewrite invg1 -expgVn invMg dh1V dh2V dh12xnE. Qed.
+
+
+(* bool here is just a fintype with two elements *)
+Definition dihedral_coxmat (p : bool * bool) :=
+  if (p.1 == p.2) then 1%N else n.
+Lemma dihedral_coxmatP : dihedral_coxmat \is a Coxeter_matrix.
+Proof. by apply/Coxeter_matrixP; split => [][|][|]. Qed.
+
+Lemma dihedral_present :
+  ((fun b => if b then dh1 else dh2), coxrels_of_mat dihedral_coxmat)
+    \present [set: dihedral].
+Proof.
+apply And3 => /=.
+- apply/esym/eqP; rewrite -subTset.
+  apply/subsetP => [[[b [i ltin]] /= Hbi]] _.
+  apply/generatedP => /= G /subsetP Hsub.
+  have        dh1G : dh1 \in G by apply/Hsub/imsetP; exists true.
+  have {Hsub} dh2G : dh2 \in G by apply/Hsub/imsetP; exists false.
+  rewrite (sdpairE (SdPair _ Hbi)) /=; apply groupM.
+    by case: b {Hbi} => //; rewrite morph1; apply: group1.
+  by rewrite Zp1_ord morphX ?inE // groupX //= -dh12E groupM.
+- rewrite /dihedral_coxmat; apply/sat_coxmatP => [][|][|] /=.
+  + by rewrite dh1K expg1.
+  + exact: dh12xnE.
+  + exact: dh21xnE.
+  + by rewrite dh2K expg1.
+- move=> gT genH /sat_coxmatP satH.
+  have satB b : genH b * genH b = 1.
+    by have := satH b b; rewrite /dihedral_coxmat /= eqxx expg1.
+  have : satisfy ([:: ([:: ord0; ord0], [::])])
+                 (fun _ : 'I_1 => genH true).
+    by apply/satisfyP=> r; rewrite inE => /eqP ->{r} /=; rewrite !biggseq satB.
+  case/(presm_spec present_bool) => fB /(_ ord0) eqfB.
+  have satZn : (genH true * genH false) ^+ n = 1.
+  by have := satH true false; rewrite /dihedral_coxmat.
+  have : satisfy [:: (nseq n ord0, [::])]
+                 (fun _ : 'I_1 => genH true * genH false).
+    move: (nseq n ord0) (size_nseq n (ord0 : 'I_1)) => s sizes.
+    apply/satisfyP => /= r; rewrite inE => /eqP ->{r} /=; rewrite !biggseq.
+    by rewrite /= big_const_seq count_predT sizes iter_mulg satZn.
+  case/(presm_spec (present_Zp _)) => fZn /(_ ord0) eqfZn.
+  have fBZact : morph_act bact_action 'J fZn fB.
+    move=> [i ltin] /= a; rewrite fun_if Zp1_ord.
+    rewrite morphV ?inE // !morphX ?inE //= {fZn}eqfZn.
+    case: a; last by rewrite morph1 conjg1.
+    rewrite {fB}eqfB conjgE -expgVn invMg !inv_sq1 //.
+    elim: i {ltin} => [|i]; first by rewrite !expg0 mul1g satB.
+    rewrite !expgS !mulgA satB mul1g => ->.
+    by rewrite !mulgA -[X in X * _ ^+ i]mulgA satB mulg1.
+  exists [morphism of xsdprodm (to := bact_gaction) (in2W fBZact)] => [][|] /=.
+  - rewrite /xsdprodm /= sdprodmEr /=; last by apply imset_f; rewrite !inE.
+    by rewrite /restrm /= invmE ?inE.
+  - rewrite /xsdprodm /= morphM /= ?inE //.
+    rewrite sdprodmEr /=; last by apply imset_f; rewrite !inE.
+    rewrite /restrm /= invmE ?inE // eqfB.
+    rewrite sdprodmEl /=; last by apply imset_f; rewrite !inE.
+    by rewrite /restrm /= invmE ?inE // eqfZn mulgA satB mul1g.
+Qed.
+
+End Dihedral.
+
+
 Section Products.
 
 Variables (gT : finGroupType) (A B G : {coxgrp gT}).
 
-Definition dprod_coxmat :=
-  fun (p : ('I[A] + 'I[B]) * ('I[A] + 'I[B])) =>
-    match p with
-    | (inl i, inl j) | (inr i, inr j) => 'M_(i, j)
-    | _ => 2
-    end.
+Definition dprod_coxmat (p : ('I[A] + 'I[B]) * ('I[A] + 'I[B])) :=
+  match p with
+  | (inl i, inl j) | (inr i, inr j) => 'M_(i, j)
+  | _ => 2
+  end.
 
 Lemma dprod_coxmatP : dprod_coxmat \is a Coxeter_matrix.
 Proof.

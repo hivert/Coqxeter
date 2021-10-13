@@ -14,17 +14,23 @@
 (*                  http://www.gnu.org/licenses/                              *)
 (******************************************************************************)
 Require Import mathcomp.ssreflect.ssreflect.
-From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq.
-From mathcomp Require Import choice fintype finset finfun tuple.
+From mathcomp Require Import ssreflect ssrfun ssrbool eqtype choice fintype.
+From mathcomp Require Import ssrnat seq finfun finset tuple.
 From mathcomp Require Import bigop fingroup perm morphism alt gproduct.
+From mathcomp Require Import ssralg zmodp div.
+
 Require Import ssrcompl.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+Import GRing.Theory.
 
 Import GroupScope.
+
+
+Definition biggseq := (big_cons, big_nil, mulg1, mulgA).
 
 Reserved Notation "gr \present G" (at level 10).
 
@@ -352,6 +358,9 @@ End PresentTriv.
 
 Section PresentBool.
 
+Lemma boolV (x : bool) : x^-1 = x.
+Proof. by case: x. Qed.
+
 Lemma present_bool :
   (fun _ : 'I_1 => true, [:: ([:: ord0; ord0], [::])]) \present [set: bool].
 Proof.
@@ -360,15 +369,61 @@ apply And3 => /=.
 - apply/esym/eqP; rewrite -subTset.
   apply/subsetP => [[|]] _; apply/generatedP=> G /subsetP/(_ true trin) //.
   by move=> trinG; exact: (groupM trinG trinG).
-- by rewrite andbT big_nil big_cons big_seq1.
-- move=> gT genH; rewrite andbT big_nil big_cons big_seq1 /= => /eqP Heq.
+- by rewrite andbT !biggseq.
+- move=> gT genH; rewrite andbT !biggseq => /eqP Heq.
   pose phi b := if b then genH ord0 else 1.
   have phi_morph : {in [set: bool] & , {morph phi : x y / x * y}}.
     by case=> /= [] [] _ _ /=; rewrite ?Heq ?mulg1 ?mul1g.
-  by exists (Morphism phi_morph) => i /=; rewrite ord1.
+  by exists (Morphism phi_morph) => i /=; rewrite fintype.ord1.
 Qed.
 
 End PresentBool.
+
+
+Section PresentZp.
+
+Variable (n0 : nat).
+Local Notation n := n0.+2.
+
+Implicit Type (x y z : 'I_n) (i j k : nat).
+
+Lemma expZp x k : x ^+ k = (x *+ k)%R.
+Proof.
+elim: k => [|k IHk]; first by rewrite expg0 mulr0n.
+by rewrite expgS mulrS IHk.
+Qed.
+Lemma Zp_expn x : x ^+ n = 1 :> 'I_n.
+Proof. by rewrite expZp Zp_mulrn; apply val_inj; rewrite /= modnMl. Qed.
+Lemma Zp1_expn k : Zp1 ^+ k = (k%:R)%R :> 'I_n.
+Proof. by rewrite expZp. Qed.
+Lemma Zp1_ord k (ltkn : k < n) : Ordinal ltkn = Zp1 ^+ k.
+Proof.
+by rewrite expZp Zp_mulrn mul1n; apply val_inj; rewrite /= modn_small.
+Qed.
+
+Lemma present_Zp :
+  (fun _ : 'I_1 => Zp1, [:: (nseq n ord0, [::])]) \present [set: 'I_n].
+Proof.
+move: (nseq n ord0) (size_nseq n (ord0 : 'I_1)) => s sizes.
+apply And3.
+- apply/esym/eqP; rewrite -subTset /=.
+  apply/subsetP => [[i ltin]] _; apply/generatedP=> G /subsetP/(_ Zp1) H.
+  have {}H : Zp1 \in G by apply/H/imsetP; exists ord0.
+  by rewrite (Zp1_ord ltin) groupX.
+- by rewrite /= andbT big_nil big_const_seq count_predT sizes iter_mulg Zp_expn.
+- move=> gT genH; rewrite /= andbT big_nil => /eqP H.
+  have {}H : genH ord0 ^+ n = 1.
+    rewrite -[RHS]H -iter_mulg -sizes -count_predT -[LHS]big_const_seq /=.
+    by apply eq_bigr => i _; rewrite fintype.ord1.
+  pose phi (i : 'I_n) := genH ord0 ^+ i.
+  have phi_morph : {in [set: 'I_n] & , {morph phi : x y / x * y}}.
+    case=> /= [i ltin] [j ltjn] _ _.
+    rewrite /phi -expgD /= [in RHS](divn_eq (i + j) n) expgD.
+    by rewrite mulnC expgM H expg1n mul1g.
+  by exists (Morphism phi_morph) => i /=; rewrite ord1.
+Qed.
+
+End PresentZp.
 
 
 Section PresentDProd.
