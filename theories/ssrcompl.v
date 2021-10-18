@@ -72,4 +72,13 @@ Proof. by rewrite -(inj_eq (conjg_inj z ^-1)) -conjgM mulgV conjg1. Qed.
 Lemma iter_mulg n x : iter n (mulg x) 1 = x ^+ n.
 Proof. by rewrite /expgn /expgn_rec Monoid.iteropE /=. Qed.
 
+Lemma prodgV I r (P : pred I) (F : I -> gT) :
+  (\prod_(i <- r | P i) F i) ^-1 = \prod_(i <- rev r | P i) (F i)^-1.
+Proof.
+elim: r => [| r i IHr]; first by rewrite !big_nil invg1.
+rewrite big_cons rev_cons -cats1 big_cat big_cons big_nil /= mulg1.
+rewrite -{}IHr -{4}invg1 -fun_if -invMg.
+by case: (P r); last by rewrite mul1g.
+Qed.
+
 End GroupCompl.

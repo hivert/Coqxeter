@@ -8,3 +8,4 @@ theories/explcox.v
 theories/natbar.v
 theories/present.v
 theories/ssrcompl.v
+theories/freegroup.v
