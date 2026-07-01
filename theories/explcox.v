@@ -13,10 +13,9 @@
 (*                                                                            *)
 (*                  http://www.gnu.org/licenses/                              *)
 (******************************************************************************)
-Require Import mathcomp.ssreflect.ssreflect.
-From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq.
-From mathcomp Require Import choice fintype finset finfun order fingraph.
-From mathcomp Require Import bigop fingroup perm morphism alt gproduct action.
+From HB Require Import structures.
+From mathcomp Require Import all_boot.
+From mathcomp Require Import fingroup perm morphism alt gproduct action.
 From mathcomp Require Import ssralg zmodp div.
 Require Import ssrcompl present coxsystem.
 
@@ -62,7 +61,7 @@ suff -> : coxrels_of_mat bool_coxmat = [:: ([:: ord0; ord0], [::])]
     by exact: present_bool.
 apply (eq_from_nth (x0 := ([::], [::]))); rewrite nbrel // => [][|]// _.
 rewrite /= /coxrels_of_mat.
-suff -> : enum (ordinal_finType 1) = [:: ord0] by rewrite allpairs1l /=.
+suff -> : enum 'I_1 = [:: ord0] by rewrite allpairs1l /=.
 apply (eq_from_nth (x0 := ord0)); rewrite size_enum_ord // => i _.
 by rewrite !ord1.
 Qed.
@@ -105,7 +104,7 @@ Lemma dh2K : dh2 * dh2 = 1.
 Proof.
 apply val_inj; rewrite /= !val_insubd !inE /= !(mulg1, mul1g).
 apply/eqP; rewrite xpair_eqE eqxx /=.
-by rewrite /mulg /= addNr.
+by rewrite /mul /= addNr.
 Qed.
 Lemma dh2V : dh2 ^-1 =  dh2.
 Proof. by rewrite inv_sq1 ?dh2K. Qed.
@@ -116,7 +115,7 @@ Proof.
 rewrite /dh1 /dh2; apply val_inj => /=.
 rewrite !val_insubd !inE /= !(mulg1, mul1g).
 apply/eqP; rewrite xpair_eqE eqxx /=.
-by rewrite oppr0 /mulg /= add0r.
+by rewrite oppr0 /mul /= add0r.
 Qed.
 Lemma dh12xnE : (dh1 * dh2) ^+ n = 1.
 Proof.
@@ -164,7 +163,7 @@ apply And3 => /=.
                  (fun _ : 'I_1 => genH true * genH false).
     move: (nseq n ord0) (size_nseq n (ord0 : 'I_1)) => s sizes.
     apply/satisfyP => /= r; rewrite inE => /eqP ->{r} /=; rewrite !biggseq.
-    by rewrite /= big_const_seq count_predT sizes iter_mulg satZn.
+    by rewrite /= big_const_seq count_predT sizes iter_mulg_1 satZn.
   case/(presm_spec (present_Zp _)) => fZn /(_ ord0) eqfZn.
   have fBZact : morph_act bact_action 'J fZn fB.
     move=> [i ltin] /= a; rewrite fun_if Zp1_ord.

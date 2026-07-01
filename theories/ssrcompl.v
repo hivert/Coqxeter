@@ -13,9 +13,8 @@
 (*                                                                            *)
 (*                  http://www.gnu.org/licenses/                              *)
 (******************************************************************************)
-Require Import mathcomp.ssreflect.ssreflect.
-From mathcomp Require Import ssreflect ssrfun ssrbool eqtype seq ssrnat.
-From mathcomp Require Import choice fintype finset fingroup bigop.
+From HB Require Import structures.
+From mathcomp Require Import all_boot.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -55,30 +54,18 @@ End ImsetFix.
 
 Section GroupCompl.
 
-Import GroupScope.
+Local Open Scope group_scope.
 
-Variables (gT : finGroupType).
+Variables (gT : groupType).
 Implicit Types (x y z : gT).
 
 Lemma inv_sq1 x : x * x = 1 -> x^-1 = x.
-Proof. by move=> /(congr1 (mulg^~ x^-1)); rewrite mulgK mul1g => {2}->. Qed.
+Proof. by move=> /(congr1 ( *%g^~ x^-1)); rewrite mulgK mul1g => {2}->. Qed.
 
 Lemma conjgg x : x ^ x = x.
 Proof. by rewrite conjgE mulKg. Qed.
 
 Lemma eq_conjg x y z : (x == y ^ z) = (x ^ (z ^-1) == y).
 Proof. by rewrite -(inj_eq (conjg_inj z ^-1)) -conjgM mulgV conjg1. Qed.
-
-Lemma iter_mulg n x : iter n (mulg x) 1 = x ^+ n.
-Proof. by rewrite /expgn /expgn_rec Monoid.iteropE /=. Qed.
-
-Lemma prodgV I r (P : pred I) (F : I -> gT) :
-  (\prod_(i <- r | P i) F i) ^-1 = \prod_(i <- rev r | P i) (F i)^-1.
-Proof.
-elim: r => [| r i IHr]; first by rewrite !big_nil invg1.
-rewrite big_cons rev_cons -cats1 big_cat big_cons big_nil /= mulg1.
-rewrite -{}IHr -{4}invg1 -fun_if -invMg.
-by case: (P r); last by rewrite mul1g.
-Qed.
 
 End GroupCompl.

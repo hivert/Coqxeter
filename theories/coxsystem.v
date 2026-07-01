@@ -13,10 +13,9 @@
 (*                                                                            *)
 (*                  http://www.gnu.org/licenses/                              *)
 (******************************************************************************)
-Require Import mathcomp.ssreflect.ssreflect.
-From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq.
-From mathcomp Require Import choice fintype finset finfun order fingraph.
-From mathcomp Require Import tuple bigop fingroup perm morphism alt gproduct.
+From HB Require Import structures.
+From mathcomp Require Import all_boot.
+From mathcomp Require Import fingroup perm morphism alt gproduct.
 Require Import ssrcompl present.
 
 
@@ -25,6 +24,7 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Import GroupScope.
+
 
 Reserved Notation "''I[' g ]" (format "''I[' g ]").
 Reserved Notation "''S[' g ]" (format "''S[' g ]").
@@ -40,7 +40,8 @@ Reserved Notation "''s_' [ w ] "
 Reserved Notation "''s[' W ]_ i" (at level 2, i at level 100).
 Reserved Notation "''s[' W ]_ [ w ] " (at level 2, w at level 100).
 
-Definition biggseq := (big_cons, big_nil, mulg1, mulgA).
+Definition biggseq {G : groupType} :=
+  (big_cons, big_nil, @mulg1 G , @mulgA G).
 
 
 (** ** Alternating sequences *)
@@ -171,17 +172,17 @@ Lemma coxmat_rel i j : ('s_i * 's_j) ^+ M (i, j) = 1.
 Proof. by move/sat_coxmatP: sat => ->. Qed.
 Lemma coxmat_mulss i : 's_i * 's_i = 1.
 Proof. by move/sat_coxmatP: sat => /(_ i i); rewrite coxmdiag. Qed.
-Lemma coxmat_sV i : 's_i ^-1 = 's_i.
+Lemma coxmat_sV i : ('s_i)^-1 = 's_i.
 Proof. by rewrite inv_sq1 ?coxmat_mulss. Qed.
-Lemma coxmat_mulKs i : cancel (mulg 's_i) (mulg 's_i).
+Lemma coxmat_mulKs i : cancel (mul 's_i) (mul 's_i).
 Proof. by move=> x; rewrite -{1}(coxmat_sV i) mulKg. Qed.
-Lemma coxmat_mulsK i : cancel (mulg^~ 's_i) (mulg^~ 's_i).
+Lemma coxmat_mulsK i : cancel (mul^~ 's_i) (mul^~ 's_i).
 Proof. by move=> x; rewrite -{2}(coxmat_sV i) mulgK. Qed.
 
 Lemma coxmat_sC i j : M (i, j) = 2 -> commute 's_i 's_j.
 Proof.
 have := coxmat_rel i j => /[swap] ->.
-rewrite /commute => /(congr1 (mulg ('s_ j * 's_ i))).
+rewrite /commute => /(congr1 (mul ('s_ j * 's_ i))).
 by rewrite mulg1 !mulgA coxmat_mulsK coxmat_mulss mul1g.
 Qed.
 
@@ -266,7 +267,7 @@ Implicit Types (i : 'I) (s : seq 'I).
 
 
 Definition rank := #|[set: 'I]|.
-Definition coxirred := n_comp (fun i j => 'M[W]_(i, j) >= 3)%O predT == 1%N.
+Definition coxirred := n_comp (fun i j => 'M[W]_(i, j) >= 3) predT == 1%N.
 
 Lemma coxmatP : 'M[W] \is a Coxeter_matrix.
 Proof. by case: W => [G []]. Qed.
@@ -347,7 +348,7 @@ Lemma BBEq1_11 n s :
   n < size s -> tword (take n.+1 s) * 's_[s] = 's_[take n s ++ drop n.+1 s].
 Proof.
 rewrite -{3}(cat_take_drop n.+1 s) !big_cat /= mulgA => ltns.
-rewrite -(take_take (leqnSn n) s).
+rewrite -(take_takel s (leqnSn n)).
 case/lastP: (take n.+1 s) (size_takel ltns) => // s' sn {ltns}.
 rewrite size_rcons -{2 3}cats1 big_cat /= => [][{2}<-].
 rewrite take_size_cat // /tword rev_rcons /= big_cat /=.
@@ -372,7 +373,7 @@ Lemma tword_refl n s : n < size s -> tword (take n.+1 s) \in reflexions.
 Proof.
 move/size_takel; case/lastP: (take _ _) => // {}s sn _.
 rewrite twordE -{1}(invgK 's_[s]) -mulgA -conjgE; apply: imset2_f => //.
-by rewrite groupV.
+by rewrite groupV memcoxw.
 Qed.
 
 
@@ -493,8 +494,8 @@ move=> /reducedP sred /andP[ltij ltjs]; apply/negP => /eqP Heq.
 have leij := ltnW ltij. have lejs := ltnW ltjs.
 have:= erefl 's_[s]; rewrite -{1}(mul1g 's_[s]) -{1}(reflsK (tword_refl ltjs)).
 rewrite -{1}Heq {Heq} -mulgA BBEq1_11 // big_cat /= mulgA.
-rewrite -(take_take ltij) BBEq1_11 ?size_takel // -big_cat => {}/sred.
-rewrite !size_cat !size_drop (take_take leij) !size_takel ?(leq_trans leij) //.
+rewrite -(take_takel _ ltij) BBEq1_11 ?size_takel // -big_cat => {}/sred.
+rewrite !size_cat !size_drop (take_takel _ leij) !size_takel ?(leq_trans leij) //.
 case: (size s) ltjs {leij lejs} => // sz; rewrite subSS ltnS.
 case: j ltij => // j; rewrite ltnS subSS => /subnKC ->{i}.
 case: sz => // sz; rewrite ltnS subSS => /subnKC ->{j}.
@@ -510,7 +511,7 @@ case: (ltngtP i j) => // cmpij; exfalso.
 - by have := H j i; rewrite eqtw eqxx cmpij ltis /= => /(_ is_true_true).
 Qed.
 Lemma reduced_tword_uniq s :
-  s \is reduced -> uniq [seq tword (take i.+1 s) | i <- iota 0 (size s)].
+  s \is reduced -> uniq [seq tword (take j.+1 s) | j <- iota 0 (size s)].
 Proof.
 move/reduced_tword_inj => H.
 apply/(uniqPn 1) => [][i][j][ltij].
@@ -527,7 +528,7 @@ apply/satisfyP=> /= [[l r] /allpairsP[[i j] /= [_ _ [->{l} ->{r}]]]].
 by rewrite cox_altseq_double big_nil expg1n.
 Qed.
 (** This is epsilon of BB Lemma 1.4.1 *)
-Definition oddcox : {morphism W >-> boolGroup} :=
+Definition oddcox : {morphism W >-> bool} :=
   let: exist m _ := presm_spec (coxpresP W) oddcox_subproof in m.
 Lemma oddcoxs i : oddcox 's_i = true.
 Proof. by rewrite /oddcox; case: presm_spec. Qed.
@@ -583,17 +584,9 @@ Qed.
 (** * Action by permutation on signed reflexions *)
 Structure coxrefl : predArgType :=
   CoxRefl { coxreflval :> gT; _ : coxreflval \in reflexions }.
-Canonical coxrefl_subType := Eval hnf in [subType for coxreflval].
-Definition coxrefl_eqMixin := Eval hnf in [eqMixin of coxrefl by <:].
-Canonical coxrefl_eqType := EqType coxrefl coxrefl_eqMixin.
-Definition coxrefl_choiceMixin := Eval hnf in [choiceMixin of coxrefl by <:].
-Canonical coxrefl_choiceType := ChoiceType coxrefl coxrefl_choiceMixin.
-Definition coxrefl_countMixin := Eval hnf in [countMixin of coxrefl by <:].
-Canonical coxrefl_countType := CountType coxrefl coxrefl_countMixin.
-Canonical coxrefl_subCountType := Eval hnf in [subCountType of coxrefl].
-Definition coxrefl_finMixin := Eval hnf in [finMixin of coxrefl by <:].
-Canonical coxrefl_finType := FinType coxrefl coxrefl_finMixin.
-Canonical coxrefl_subFinType := Eval hnf in [subFinType of coxrefl].
+
+HB.instance Definition _ := [isSub of coxrefl for coxreflval].
+HB.instance Definition _ := [Finite of coxrefl by <:].
 
 Lemma coxreflP (t : coxrefl) : coxreflval t \in reflexions.
 Proof. by case: t. Qed.
@@ -602,9 +595,9 @@ Lemma coxreflW (t : coxrefl) : coxreflval t \in W.
 Proof. exact: reflsW. Qed.
 Hint Resolve coxreflW : core.
 
-Lemma coxreflK (t : coxrefl) : t * t = 1.
+Lemma coxreflK (t : coxrefl) : \val t * \val t = 1.
 Proof. by rewrite reflsK. Qed.
-Lemma coxreflV (t : coxrefl) : t ^-1 = t :> gT.
+Lemma coxreflV (t : coxrefl) : (\val t) ^-1 = t :> gT.
 Proof. by rewrite reflsV. Qed.
 
 Definition coxrefls i := CoxRefl (coxs_refls i).
@@ -615,9 +608,9 @@ Definition coxreflJw (t : coxrefl) (s : seq 'I) :=
 
 Lemma coxreflsE i : val (coxrefls i) = 's_i.
 Proof. by []. Qed.
-Lemma coxreflJsE t i : val (coxreflJs t i) = t ^ 's_i.
+Lemma coxreflJsE t i : val (coxreflJs t i) = (\val t) ^ 's_i.
 Proof. by []. Qed.
-Lemma coxreflJwE t s : val (coxreflJw t s) = t ^ 's_[s].
+Lemma coxreflJwE t s : val (coxreflJw t s) = (\val t) ^ 's_[s].
 Proof. by []. Qed.
 
 
@@ -642,7 +635,7 @@ Lemma permreflbK i : permreflb i ^+ 2 = 1.
 Proof. by apply/permP => p; rewrite !permE /= !permE actreflbK. Qed.
 
 Definition ntw s t :=
-  (count_mem t [seq tword (take i.+1 s) | i <- iota 0 (size s)]).
+  (count_mem t [seq tword (take j.+1 s) | j <- iota 0 (size s)]).
 (** This is eta of BB Equation 1.17 *)
 Definition oddntw w (t : coxrefl) := odd (ntw (redword w) (val t)).
 
@@ -751,7 +744,7 @@ rewrite -mulgA morphM ?(groupM, groupV) // ?memcoxs ?memcoxw //.
 rewrite permreflbmE !permM permE /=.
 rewrite morphM ?(groupM, groupV) // ?memcoxs ?memcoxw //.
 rewrite permreflbmE !permM /= {}IHs; first last.
-  by rewrite coxreflJsE eqt conjgE coxsV mulsK mulKs.
+  by rewrite coxreflJsE /= eqt conjgE coxsV mulsK mulKs.
 rewrite permE /=.
 apply/eqP; rewrite reflb_eqE /= -conjgM mulss conjg1 eqxx /=.
 rewrite eq_conjg coxsV conjgg -addNb -mulgA.
@@ -762,9 +755,10 @@ Lemma odd_count_has T (s : seq T) (P : pred T) : odd (count P s) -> has P s.
 Proof. by rewrite has_count; case: count. Qed.
 
 Lemma lengthM_oddntw w (t : coxrefl) :
-  w \in W -> (length (t * w) < length w) = oddntw w t.
+  w \in W -> (length (\val t * w) < length w) = oddntw w t.
 Proof.
-have impl w' t' : w' \in W -> oddntw w' t' -> (length (t' * w') < length w').
+have impl w' t' : w' \in W -> oddntw w' t' ->
+                  (length (\val t' * w') < length w').
   rewrite /oddntw /ntw => win /odd_count_has/hasP/= [tw /mapP[/= i]].
   rewrite mem_iota add0n /= => ltis ->{tw} /eqP<-.
   rewrite -{2}(redwordE win) BBEq1_11 //; apply (leq_ltn_trans (lengthw _)).
@@ -774,8 +768,8 @@ have impl w' t' : w' \in W -> oddntw w' t' -> (length (t' * w') < length w').
 move=> win; apply/idP/idP; last exact: impl.
 apply contraLR => /negPf oddtwf; rewrite -leqNgt; apply ltnW.
 have tin := coxreflW t.
-have twin : t * w \in W by rewrite groupM.
-have tVwin : t^-1 * w \in W by rewrite groupM // groupV.
+have twin : \val t * w \in W by rewrite groupM.
+have tVwin : (val t)^-1 * w \in W by rewrite groupM // groupV.
 have := permreflbmwE t false tVwin.
 rewrite coxreflV morphM ?groupV //.
 rewrite permM permreflbm_coxrefl /=.
@@ -785,8 +779,8 @@ Qed.
 
 (** This is BB Theorem 1.4.3 *)
 Theorem strong_exchange_property s (t : coxrefl) :
-  length (t * 's_[s]) < length 's_[s] ->
-  exists2 i, i < size s & t * 's_[s] = 's_[take i s ++ drop i.+1 s].
+  length (\val t * 's_[s]) < length 's_[s] ->
+  exists2 i, i < size s & \val t * 's_[s] = 's_[take i s ++ drop i.+1 s].
 Proof.
 have sin := memcoxw s.
 rewrite (lengthM_oddntw _ sin) -(oddntwE _ (erefl _)).
@@ -797,7 +791,7 @@ Qed.
 
 (** This is (a) -> (c) of BB Corollary 1.4.4 *)
 Corollary twordM_length s (t : coxrefl) :
-  (length (t * 's_[s]) < length 's_[s]) ->
+  (length (\val t * 's_[s]) < length 's_[s]) ->
   exists2 i, i < size s & tword (take i.+1 s) = t :> gT.
 Proof.
 move=> /strong_exchange_property => [[i ltis]].
@@ -816,13 +810,13 @@ by rewrite ltnS subSS subnKC.
 Qed.
 
 (** This is BB Eq 1.19 *)
-Definition Tlft w := [set t : coxrefl | length (t * w) < length(w)].
-Definition Trgt w := [set t : coxrefl | length (w * t) < length(w)].
+Definition Tlft w := [set t : coxrefl | length (\val t * w) < length(w)].
+Definition Trgt w := [set t : coxrefl | length (w * \val t) < length(w)].
 
 Lemma TlftV w : Tlft (w ^-1) = Trgt w.
 Proof.
 rewrite /Tlft /Trgt; apply/setP => t; rewrite !inE lengthV.
-by rewrite -(lengthV (t * w^-1)) invMg invgK coxreflV.
+by rewrite -(lengthV (\val t * w^-1)) invMg invgK coxreflV.
 Qed.
 
 (** This is BB Corollary 1.4.5 *)

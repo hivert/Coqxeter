@@ -1,8 +1,10 @@
--R theories/ Combi
--arg -w
--arg -notation-overridden
--arg -w
--arg -ambiguous-paths
+-R theories Combi
+-arg -w -arg -notation-overridden
+-arg -w -arg -ambiguous-paths
+-arg -w -arg -redundant-canonical-projection
+-arg -w -arg -projection-no-head-constant
+-arg -w -arg -notation-incompatible-prefix
+-arg -w -arg -closed-notation-not-level-0
 theories/coxsystem.v
 theories/explcox.v
 theories/natbar.v

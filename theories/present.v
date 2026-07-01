@@ -13,10 +13,9 @@
 (*                                                                            *)
 (*                  http://www.gnu.org/licenses/                              *)
 (******************************************************************************)
-Require Import mathcomp.ssreflect.ssreflect.
-From mathcomp Require Import ssreflect ssrfun ssrbool eqtype choice fintype.
-From mathcomp Require Import ssrnat seq finfun finset tuple.
-From mathcomp Require Import bigop fingroup perm morphism alt gproduct.
+From HB Require Import structures.
+From mathcomp Require Import all_boot.
+From mathcomp Require Import fingroup perm morphism gproduct alt.
 From mathcomp Require Import ssralg zmodp div.
 
 Require Import ssrcompl.
@@ -25,12 +24,7 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-Import GRing.Theory.
-
-Import GroupScope.
-
-
-Definition biggseq := (big_cons, big_nil, mulg1, mulgA).
+Local Open Scope group_scope.
 
 Reserved Notation "gr \present G" (at level 10).
 
@@ -278,7 +272,7 @@ Lemma present_bij :
 Proof.
 split.
 - move/(present_map fK).
-  rewrite -map_comp (eq_map (f2 := id)) ?map_id // => [[r1 r2]] /=.
+  rewrite -map_comp (eq_map (g := id)) ?map_id // => [[r1 r2]] /=.
   rewrite -!map_comp -[in RHS](map_id r1) -[in RHS](map_id r2).
   by congr (_, _); apply eq_map => i /=; rewrite fK.
 - have /present_eq : gens =1 (gens \o f_inv) \o f by move=> i; rewrite /= fK.
@@ -369,8 +363,8 @@ apply And3 => /=.
 - apply/esym/eqP; rewrite -subTset.
   apply/subsetP => [[|]] _; apply/generatedP=> G /subsetP/(_ true trin) //.
   by move=> trinG; exact: (groupM trinG trinG).
-- by rewrite andbT !biggseq.
-- move=> gT genH; rewrite andbT !biggseq => /eqP Heq.
+- by rewrite andbT !(big_cons, big_nil, mulg1).
+- move=> gT genH; rewrite andbT !(big_cons, big_nil, mulg1) => /eqP Heq.
   pose phi b := if b then genH ord0 else 1.
   have phi_morph : {in [set: bool] & , {morph phi : x y / x * y}}.
     by case=> /= [] [] _ _ /=; rewrite ?Heq ?mulg1 ?mul1g.
@@ -389,8 +383,8 @@ Implicit Type (x y z : 'I_n) (i j k : nat).
 
 Lemma expZp x k : x ^+ k = (x *+ k)%R.
 Proof.
-elim: k => [|k IHk]; first by rewrite expg0 mulr0n.
-by rewrite expgS mulrS IHk.
+elim: k => [|k IHk]; first by rewrite expg0 GRing.mulr0n.
+by rewrite expgS GRing.mulrS IHk.
 Qed.
 Lemma Zp_expn x : x ^+ n = 1 :> 'I_n.
 Proof. by rewrite expZp Zp_mulrn; apply val_inj; rewrite /= modnMl. Qed.
@@ -410,10 +404,10 @@ apply And3.
   apply/subsetP => [[i ltin]] _; apply/generatedP=> G /subsetP/(_ Zp1) H.
   have {}H : Zp1 \in G by apply/H/imsetP; exists ord0.
   by rewrite (Zp1_ord ltin) groupX.
-- by rewrite /= andbT big_nil big_const_seq count_predT sizes iter_mulg Zp_expn.
+- by rewrite /= andbT big_nil big_const_seq count_predT sizes iter_mulg_1 Zp_expn.
 - move=> gT genH; rewrite /= andbT big_nil => /eqP H.
   have {}H : genH ord0 ^+ n = 1.
-    rewrite -[RHS]H -iter_mulg -sizes -count_predT -[LHS]big_const_seq /=.
+    rewrite -[RHS]H -iter_mulg_1 -sizes -count_predT -[LHS]big_const_seq /=.
     by apply eq_bigr => i _; rewrite fintype.ord1.
   pose phi (i : 'I_n) := genH ord0 ^+ i.
   have phi_morph : {in [set: 'I_n] & , {morph phi : x y / x * y}}.
