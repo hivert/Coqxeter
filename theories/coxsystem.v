@@ -207,6 +207,7 @@ Qed.
 End CoxeterMatrix.
 
 
+(* Due to mathcomp limitation, we only formalize *finite* coxeter groups *)
 Section Defs.
 
 Variables (gT : finGroupType).
@@ -843,8 +844,9 @@ Qed.
 (** This is BB Proposition 1.4.7 *)
 Proposition deletion_property_take_drop s :
   length 's_[s] < size s ->
-  exists (i j : nat), i < j < size s /\
-  's_[s] = 's_[take i s ++ drop i.+1 (take j s) ++ drop j.+1 s].
+  exists (i j : nat),
+    i < j < size s /\
+      's_[s] = 's_[take i s ++ drop i.+1 (take j s) ++ drop j.+1 s].
 Proof.
 case Hs : s  => [//| i0 s']; rewrite -{s'}Hs => ltls.
 have exnred : exists n, drop n s \isn't reduced.
