@@ -14,8 +14,7 @@
 (*                  http://www.gnu.org/licenses/                              *)
 (******************************************************************************)
 From HB Require Import structures.
-From mathcomp Require Import all_boot.
-From mathcomp Require Import fingroup perm morphism alt gproduct action.
+From mathcomp Require Import boot fingroup perm morphism alt gproduct action.
 From mathcomp Require Import ssralg zmodp div.
 Require Import ssrcompl present coxsystem.
 
@@ -71,7 +70,7 @@ Canonical bool_coxgrp := CoxGrp (CoxSys bool_coxmatP bool_present).
 Section Dihedral.
 
 Variable (n0 : nat).
-Local Notation n := n0.+2.
+Local Abbreviation n := n0.+2.
 
 (** We construct the Dihedral group as the semi-direct product Zn X| Bool *)
 Definition bact (i : 'I_n) (b : bool) : 'I_n :=
@@ -174,12 +173,12 @@ apply And3 => /=.
     rewrite !expgS !mulgA satB mul1g => ->.
     by rewrite !mulgA -[X in X * _ ^+ i]mulgA satB mulg1.
   exists [morphism of xsdprodm (to := bact_gaction) (in2W fBZact)] => [][|] /=.
-  - rewrite /xsdprodm /= sdprodmEr /=; last by apply imset_f; rewrite !inE.
+  - rewrite /xsdprodm /= sdprodmEr /=; first by apply imset_f; rewrite !inE.
     by rewrite /restrm /= invmE ?inE.
   - rewrite /xsdprodm /= morphM /= ?inE //.
-    rewrite sdprodmEr /=; last by apply imset_f; rewrite !inE.
+    rewrite sdprodmEr /=; first by apply imset_f; rewrite !inE.
     rewrite /restrm /= invmE ?inE // eqfB.
-    rewrite sdprodmEl /=; last by apply imset_f; rewrite !inE.
+    rewrite sdprodmEl /=; first by apply imset_f; rewrite !inE.
     by rewrite /restrm /= invmE ?inE // eqfZn mulgA satB mul1g.
 Qed.
 

@@ -14,8 +14,7 @@
 (*                  http://www.gnu.org/licenses/                              *)
 (******************************************************************************)
 From HB Require Import structures.
-From mathcomp Require Import all_boot.
-From mathcomp Require Import fingroup perm morphism gproduct alt.
+From mathcomp Require Import boot fingroup perm morphism gproduct alt.
 From mathcomp Require Import ssralg zmodp div.
 
 Require Import ssrcompl.
@@ -377,7 +376,7 @@ End PresentBool.
 Section PresentZp.
 
 Variable (n0 : nat).
-Local Notation n := n0.+2.
+Local Abbreviation n := n0.+2.
 
 Implicit Type (x y z : 'I_n) (i j k : nat).
 
@@ -475,9 +474,9 @@ apply And3 => /=.
     + by rewrite dprodmEl // (present_mem prA).
     + by rewrite dprodmEr // (present_mem prB).
   rewrite [X in fA @* X](present_gen prA) [X in fB @* X](present_gen prB).
-  rewrite !morphim_gen; first last.
-    + by apply/subsetP => x /imsetP[b _ ->{x}]; apply (present_mem prB).
-    + by apply/subsetP => x /imsetP[a _ ->{x}]; apply (present_mem prA).
+  rewrite !morphim_gen.
+  + by apply/subsetP => x /imsetP[b _ ->{x}]; apply (present_mem prB).
+  + by apply/subsetP => x /imsetP[a _ ->{x}]; apply (present_mem prA).
   rewrite gen_subG /= cent_gen; apply/subsetP => /= x /imsetP[y].
   rewrite inE => /andP[_ /imsetP[b _ ->{y} ->{x}]].
   apply/centP => x /imsetP[y].

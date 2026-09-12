@@ -14,7 +14,7 @@
 (*                  http://www.gnu.org/licenses/                              *)
 (******************************************************************************)
 From HB Require Import structures.
-From mathcomp Require Import all_boot.
+From mathcomp Require Import boot.
 
 Require Import ssrcompl.
 
@@ -98,7 +98,7 @@ case: (x == _) => /=; last by rewrite eqSS eqss.
 by rewrite size_behead ltn_eqF // ltnS (leq_trans (leq_pred _) ltss).
 Qed.
 Lemma fgreduced_cons x s :
-  x :: s \is fgreduced = (s \is fgreduced) && (x != invol (head x s)).
+  (x :: s \is fgreduced) = (s \is fgreduced) && (x != invol (head x s)).
 Proof.
 apply/idP/andP => [ xsred|[]]; first last.
   by rewrite !qualifE /= => /eqP -> /negbTE ->.

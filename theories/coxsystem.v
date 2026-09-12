@@ -14,7 +14,7 @@
 (*                  http://www.gnu.org/licenses/                              *)
 (******************************************************************************)
 From HB Require Import structures.
-From mathcomp Require Import all_boot.
+From mathcomp Require Import boot.
 From mathcomp Require Import fingroup perm morphism alt gproduct.
 Require Import ssrcompl present.
 
@@ -186,7 +186,7 @@ rewrite /commute => /(congr1 (mul ('s_ j * 's_ i))).
 by rewrite mulg1 !mulgA coxmat_mulsK coxmat_mulss mul1g.
 Qed.
 
-Lemma coxmat_wrev s : 's_[rev s] = 's_[s] ^-1.
+Lemma coxmat_wrev s : 's_[rev s] = ('s_[s]) ^-1.
 Proof.
 elim: s => [|s0 s IHs]; first by rewrite !big_nil invg1.
 by rewrite rev_cons -cats1 big_cat big_seq1 !big_cons /= {}IHs invMg coxmat_sV.
@@ -194,7 +194,7 @@ Qed.
 Lemma coxmat_braid i j :
   's_[altseq i j (M (i, j))] = 's_[altseq j i (M (i, j))].
 Proof.
-set m := (M _); apply (mulIg 's_[altseq j i m]^-1); rewrite mulgV.
+set m := (M _); apply (mulIg ('s_[altseq j i m])^-1); rewrite mulgV.
 have : (altseq i j m.*2, [::]) \in coxrels_of_mat M.
   apply/allpairsP; exists (i, j) => /=.
   by split; [exact: mem_enum|exact: mem_enum|].
@@ -225,7 +225,7 @@ Structure coxgrp_type := CoxGrp {
 }.
 
 Definition coxgrp_of of phant gT := coxgrp_type.
-Local Notation coxgrpT := (coxgrp_of (Phant gT)).
+Local Abbreviation coxgrpT := (coxgrp_of (Phant gT)).
 Identity Coercion type_of_coxgrp : coxgrp_of >-> coxgrp_type.
 
 Definition coxgrp (A : {group gT}) Sys : coxgrpT := @CoxGrp A Sys.
@@ -243,7 +243,7 @@ Notation "{ 'coxgrp' gT }" := (coxgrp_of (Phant gT))
 
 Notation "[ 'coxgrp' 'of' G ]" := (clone_coxgrp (@coxgrp _ G))
   (at level 0, format "[ 'coxgrp'  'of'  G ]") : form_scope.
-Notation coxsys G := (coxsys_of (clone_coxgrp (@coxgrp _ G))).
+Abbreviation coxsys G := (coxsys_of (clone_coxgrp (@coxgrp _ G))).
 
 Notation "''I[' g ]" := (@coxind _ _ (coxsys g)).
 Notation "''S[' g ]" := (@coxgen _ _ (coxsys g)).
@@ -313,7 +313,7 @@ Section Reflections.
 
 Variables (gT : finGroupType) (W : {coxgrp gT}).
 Local Notation "''I'" := 'I[W].
-Local Notation word := (seq 'I).
+Local Abbreviation word := (seq 'I).
 Implicit Types (i : 'I) (s : word).
 
 Definition reflexions := [set 's_i ^ w | i in 'I, w in W].
@@ -339,7 +339,7 @@ Proof. by move=> /reflsK t2; apply (mulgI t); rewrite t2 mulgV. Qed.
 Definition tword s := 's_[s ++ behead (rev s)].
 
 (** This is BB Eq 1.10 *)
-Lemma twordE s si : tword (rcons s si) = 's_[s] * 's_si * 's_[s]^-1.
+Lemma twordE s si : tword (rcons s si) = 's_[s] * 's_si * ('s_[s])^-1.
 Proof.
 by rewrite /tword rev_rcons -cats1 -catA !big_cat /= big_seq1 coxwrev mulgA.
 Qed.
@@ -536,7 +536,7 @@ Proof. by rewrite /oddcox; case: presm_spec. Qed.
 Lemma oddcox_lenght w : w \in W -> oddcox w = odd (length w).
 Proof.
 rewrite -size_redword => /redwordE {1}<-.
-rewrite morph_prod => [|i _]; last exact: memcoxs.
+rewrite morph_prod => [i _ |]; first exact: memcoxs.
 under eq_bigr do rewrite oddcoxs.
 elim: (redword w) => [|s0 s IHs]; first by rewrite big_nil.
 by rewrite big_cons {}IHs.
@@ -668,7 +668,7 @@ apply/eqP; rewrite reflb_eqE => /=.
 rewrite cox_altseq_double coxrelP conjg1 eqxx /=.
 rewrite -{2}(mulg1 e); apply/eqP; congr (e * _); rewrite /ntw size_altseq.
 transitivity (odd (count_mem (val t)
-    [seq 's_[altseq i j k.*2.+1] | k <- iota 0 'M_(i, j).*2])).
+    [seq 's_[altseq i j k.*2.+1] | k <- iota 0 ('M_(i, j)).*2])).
   congr (odd (count_mem _ _)); apply eq_in_map => k.
   rewrite mem_iota /= add0n => ltk; rewrite /tword; congr 's_[_].
   rewrite take_altseq // rev_altseq /= if_neg fun_if.
@@ -680,7 +680,7 @@ set X := (X in count_mem _ X); set Y := (Y in _ (+) odd (count_mem _ Y)).
 suff -> : X = Y by case: odd.
 rewrite {}/X {}/Y -{2}(addn0 'M_(i, j)) iotaDl -map_comp; apply eq_map => k /=.
 rewrite -!altseqSl !altseqSr !odd_double -!cats1 !big_cat /=; congr (_ * _).
-rewrite doubleD -(cat_take_drop 'M_(i, j).*2 (altseq i j (_ + _))).
+rewrite doubleD -(cat_take_drop ('M_(i, j)).*2 (altseq i j (_ + _))).
 rewrite take_altseq ?leq_addr // drop_altseq odd_double addKn big_cat /=.
 by rewrite !cox_altseq_double coxrelP mul1g.
 Qed.
@@ -694,7 +694,7 @@ Proof. by rewrite /permreflbm;  case: presm_spec. Qed.
 Lemma permreflbmsE s (t : coxrefl) (e : bool) :
   permreflbm 's_[s] (t, e) = (coxreflJw t s, e * odd (ntw s (val t))).
 Proof.
-rewrite morph_prod => [|i _]; last exact: memcoxs.
+rewrite morph_prod => [i _ |]; first exact: memcoxs.
 under eq_bigr do rewrite permreflbmE.
 exact: permreflbsE.
 Qed.
@@ -743,7 +743,7 @@ rewrite -cats1 big_cat /= conjgM conjgE big_seq1 coxsV mulgA => eqt.
 rewrite -mulgA morphM ?(groupM, groupV) // ?memcoxs ?memcoxw //.
 rewrite permreflbmE !permM permE /=.
 rewrite morphM ?(groupM, groupV) // ?memcoxs ?memcoxw //.
-rewrite permreflbmE !permM /= {}IHs; first last.
+rewrite permreflbmE !permM /= {}IHs.
   by rewrite coxreflJsE /= eqt conjgE coxsV mulsK mulKs.
 rewrite permE /=.
 apply/eqP; rewrite reflb_eqE /= -conjgM mulss conjg1 eqxx /=.
