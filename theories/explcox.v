@@ -27,15 +27,31 @@ Import GRing.Theory.
 Import GroupScope.
 
 
+
+Section Morph.
+
+Variables (gT hT: finGroupType) (W : {coxgroup gT}).
+Variable (f : {morphism W >-> hT}).
+Hypothesis (inj_f : 'injm f).
+
+Fact morph_present : (f \o 'S[W], coxrels_of_mat 'M[W]) \present (f @* W).
+Proof. exact: (morph_present (coxpresP W) inj_f). Qed.
+Canonical morph_coxgrp := CoxGrp (CoxSys (coxmatP W) morph_present).
+Let test : {coxgroup _} := (f @* W).
+
+End Morph.
+
+
 Section Triv.
 
 Variables (gT : finGroupType).
 
 Definition set1_coxmat := fun _ : 'I_0 * 'I_0 => 0.
 Definition set1_coxgen := fun _ : 'I_0 => 1 : gT.
-Lemma set1_coxmatP : set1_coxmat \is a Coxeter_matrix.
+
+Fact set1_coxmatP : set1_coxmat \is a Coxeter_matrix.
 Proof. by apply/Coxeter_matrixP; split => [][]. Qed.
-Lemma set1_present :
+Fact set1_present :
   (set1_coxgen, coxrels_of_mat set1_coxmat) \present [1 gT].
 Proof.
 have nbrel : size (coxrels_of_mat set1_coxmat) = 0.
@@ -44,15 +60,22 @@ suff -> : coxrels_of_mat set1_coxmat = [::] by exact: present_trivG.
 by apply/nilP; rewrite /nilp nbrel.
 Qed.
 Canonical set1_coxgrp := CoxGrp (CoxSys set1_coxmatP set1_present).
+Let test : {coxgroup _} := [1 gT].
 
 End Triv.
 
+
+Section Bool.
+
+(** to avoid canonical on setT_group *)
+Definition bgroup : {group bool} := [set: bool].
+
 Definition bool_coxmat := fun _ : 'I_1 * 'I_1 => 1%N.
 Definition bool_coxgen := fun _ : 'I_1 => true.
-Lemma bool_coxmatP : bool_coxmat \is a Coxeter_matrix.
+
+Fact bool_coxmatP : bool_coxmat \is a Coxeter_matrix.
 Proof. by apply/Coxeter_matrixP; split => [][[|]// H1][[|]]. Qed.
-Lemma bool_present :
-  (bool_coxgen, coxrels_of_mat bool_coxmat) \present [set: bool].
+Fact bool_present : (bool_coxgen, coxrels_of_mat bool_coxmat) \present bgroup.
 Proof.
 have nbrel : size (coxrels_of_mat bool_coxmat) = 1%N.
   by rewrite size_allpairs size_enum_ord muln1.
@@ -65,6 +88,9 @@ apply (eq_from_nth (x0 := ord0)); rewrite size_enum_ord // => i _.
 by rewrite !ord1.
 Qed.
 Canonical bool_coxgrp := CoxGrp (CoxSys bool_coxmatP bool_present).
+Let test : {coxgroup _} := bgroup.
+
+End Bool.
 
 
 Section Dihedral.
@@ -89,11 +115,13 @@ move=> b _; rewrite inE; apply/andP; split.
 apply/morphicP=> /= i j _ _; rewrite !actpermE /=.
 by case: b => //=; rewrite opprD.
 Qed.
-Definition bact_gaction := GroupAction bactP.
-Definition dihedral := sdprod_by bact_gaction.
+Definition bact_gaction : groupAction [set: bool] [set: 'I_n] := GroupAction bactP.
+Definition dihedral_type := sdprod_by bact_gaction.
+(** to avoid canonical on setT_group *)
+Definition dihedral : {group dihedral_type} := [set: dihedral_type].
 
-Definition dh1 : dihedral := sdpair2 _ true.
-Definition dh2 : dihedral := sdpair2 _ true * sdpair1 _ Zp1.
+Definition dh1 : dihedral_type := sdpair2 _ true.
+Definition dh2 : dihedral_type := sdpair2 _ true * sdpair1 _ Zp1.
 
 Lemma dh1K : dh1 * dh1 = 1.
 Proof. by rewrite -morphM //= morph1. Qed.
@@ -107,7 +135,6 @@ by rewrite /mul /= addNr.
 Qed.
 Lemma dh2V : dh2 ^-1 =  dh2.
 Proof. by rewrite inv_sq1 ?dh2K. Qed.
-
 
 Lemma dh12E : dh1 * dh2 = sdpair1 _ Zp1.
 Proof.
@@ -125,17 +152,18 @@ Lemma dh21xnE : (dh2 * dh1) ^+ n = 1.
 Proof. by apply invg_inj; rewrite invg1 -expgVn invMg dh1V dh2V dh12xnE. Qed.
 
 
-(* bool here is just a fintype with two elements *)
+(** I use bool here as a mere fintype with two elements, since it is easier *)
+(** to reason with using case analysis compared to e.g. 'I_2                *)
 Definition dihedral_coxmat (p : bool * bool) :=
   if (p.1 == p.2) then 1%N else n.
-Lemma dihedral_coxmatP : dihedral_coxmat \is a Coxeter_matrix.
-Proof. by apply/Coxeter_matrixP; split => [][|][|]. Qed.
 
-Lemma dihedral_present :
+Fact dihedral_coxmatP : dihedral_coxmat \is a Coxeter_matrix.
+Proof. by apply/Coxeter_matrixP; split => [][|][|]. Qed.
+Fact dihedral_present :
   ((fun b => if b then dh1 else dh2), coxrels_of_mat dihedral_coxmat)
-    \present [set: dihedral].
+    \present dihedral.
 Proof.
-apply And3 => /=.
+apply Presentation => /=.
 - apply/esym/eqP; rewrite -subTset.
   apply/subsetP => [[[b [i ltin]] /= Hbi]] _.
   apply/generatedP => /= G /subsetP Hsub.
@@ -157,7 +185,7 @@ apply And3 => /=.
     by apply/satisfyP=> r; rewrite inE => /eqP ->{r} /=; rewrite !biggseq satB.
   case/(presm_spec present_bool) => fB /(_ ord0) eqfB.
   have satZn : (genH true * genH false) ^+ n = 1.
-  by have := satH true false; rewrite /dihedral_coxmat.
+    by have := satH true false; rewrite /dihedral_coxmat.
   have : satisfy [:: (nseq n ord0, [::])]
                  (fun _ : 'I_1 => genH true * genH false).
     move: (nseq n ord0) (size_nseq n (ord0 : 'I_1)) => s sizes.
@@ -181,13 +209,17 @@ apply And3 => /=.
     rewrite sdprodmEl /=; first by apply imset_f; rewrite !inE.
     by rewrite /restrm /= invmE ?inE // eqfZn mulgA satB mul1g.
 Qed.
+Canonical dihedral_coxgroup
+  := Eval hnf in CoxGrp (CoxSys dihedral_coxmatP dihedral_present).
+Let test : {coxgroup dihedral_type} := dihedral.
 
 End Dihedral.
+Notation "''D_' n" := (dihedral n) (at level 2, format "''D_' n").
 
 
-Section Products.
+Section ProductsMat.
 
-Variables (gT : finGroupType) (A B G : {coxgrp gT}).
+Context {gT hT : finGroupType} (A : {coxgroup gT}) (B : {coxgroup hT}).
 
 Definition dprod_coxmat (p : ('I[A] + 'I[B]) * ('I[A] + 'I[B])) :=
   match p with
@@ -203,54 +235,65 @@ rewrite /dprod_coxmat; apply/Coxeter_matrixP.
 by split => [][a1|b1][a2|b2]; rewrite -?AD -?BD.
 Qed.
 
-Lemma dprod_coxmatE (hT : finGroupType) :
-  satisfy (gT := hT) (coxrels_of_mat dprod_coxmat)
+Lemma dprod_coxmatE (gT2 : finGroupType) :
+  satisfy (gT := gT2) (coxrels_of_mat dprod_coxmat)
   =1 satisfy (dprod_rels (coxrels_of_mat 'M[A]) (coxrels_of_mat 'M[B])).
 Proof.
-move=> g; rewrite !satisfy_cat -!satisfy_map.
-apply/sat_coxmatP/and3P => [sat|].
-- split; try do [apply/sat_coxmatP => i j /=; exact: sat].
-  apply/satisfyP => /= r /allpairsP[[a b] /= [_ _] ->{r}] /=.
-  rewrite /= !biggseq (coxmat_sC dprod_coxmatP) //.
-  exact/sat_coxmatP.
-- move => [/sat_coxmatP/= satA /sat_coxmatP/= satB comAB].
+move=> g; apply/idP/satisfy_dprod_relsP => [/[dup]/sat_coxmatP sat satcox|].
+- split=> [|| i j]; try do [apply/sat_coxmatP => i j /=; exact: sat].
+  exact: (coxmat_sC dprod_coxmatP).
+- move=> [/sat_coxmatP satA /sat_coxmatP satB comAB].
   have sqA i : g (inl i) * g (inl i) = 1 by have:= satA i i; rewrite coxmdiag.
   have sqB i : g (inr i) * g (inr i) = 1 by have:= satB i i; rewrite coxmdiag.
-  have {}comAB (a : 'I[A]) (b : 'I[B]) : commute (g (inl a)) (g (inr b)).
-    have := satisfyP _ _ comAB ([:: inl a; inr b], [:: inr b; inl a]).
-    by rewrite /= !biggseq; apply; exact/allpairs_f/mem_enum/mem_enum.
-  move=> [a1|b1][a2|b2]; rewrite /= ?expgS ?expg0 ?mulg1 ?mulgA.
+  apply/sat_coxmatP => -[a1|b1][a2|b2]; rewrite /= ?expgS ?expg0 ?mulg1 ?mulgA.
   + exact: satA.
   + by rewrite {1}comAB -[X in X * _ = 1]mulgA sqA mulg1 sqB.
   + by rewrite -{1}comAB -[X in X * _ = 1]mulgA sqB mulg1 sqA.
   + exact: satB.
 Qed.
 
+End ProductsMat.
+Arguments dprod_coxmat {gT hT} (A B).
+
+
+Section Products.
+
+Variables (gT : finGroupType) (A B : {coxgroup gT}) (G : {group gT}).
+
 Hypothesis (eqG : A \x B = G).
 
 Lemma coxdprod_present :
-  (dprod_gens 'S[A] 'S[B], coxrels_of_mat dprod_coxmat) \present G.
+  (dprod_gens 'S[A] 'S[B], coxrels_of_mat (dprod_coxmat A B)) \present G.
 Proof.
-have prG := present_dprod eqG (coxpresP A) (coxpresP B).
-constructor => /=.
-- exact: present_gen prG.
-- by rewrite dprod_coxmatE (present_sat prG).
-- move=> hT gensH; rewrite (dprod_coxmatE gensH) => Hsat.
-  by exists (presm prG Hsat) => p; rewrite presmP.
+apply: (satisfy_eq_present _ (present_dprod eqG (coxpresP A) (coxpresP B))).
+by move=> T gen; rewrite dprod_coxmatE.
 Qed.
-Definition dprod_coxgrp := CoxGrp (CoxSys dprod_coxmatP coxdprod_present).
+Definition dprod_coxgrp := CoxGrp (CoxSys (dprod_coxmatP A B) coxdprod_present).
 
 End Products.
 
 
-Section Morph.
+Section CoxSetX.
 
-Variables (gT hT: finGroupType) (W : {coxgrp gT}).
-Variable (f : {morphism W >-> hT}).
-Hypothesis (inj_f : 'injm f).
+Variables (gT hT : finGroupType) (G : {coxgroup gT}) (H : {coxgroup hT}).
 
-Lemma morph_present : (f \o 'S[W], coxrels_of_mat 'M[W]) \present (f @* W).
-Proof. exact: (morph_present (coxpresP W) inj_f). Qed.
-Canonical morph_coxgrp := CoxGrp (CoxSys (coxmatP W) morph_present).
+Let injG := restrm (subsetT G) (@pairg1 gT hT).
+Let injH := restrm (subsetT H) (@pair1g gT hT).
 
-End Morph.
+Lemma coxSetX_present :
+  (dprod_gens (injG \o 'S[G]) (injH \o 'S[H]),
+    coxrels_of_mat (dprod_coxmat G H)) \present (setX G H).
+Proof.
+apply: (satisfy_eq_present _ (present_setX (coxpresP G) (coxpresP H))).
+by move=> T gen; rewrite dprod_coxmatE.
+Qed.
+(* The following Canonical doesn't work due to a reverse_coercion *)
+(* in front of setX                                               *)
+Canonical setX_coxgrp :=
+  Eval hnf in CoxGrp (CoxSys (dprod_coxmatP G H) coxSetX_present).
+
+(**
+Fail Check (setX G H) : {coxgroup _}.
+Print Canonical Projections. *)
+
+End CoxSetX.

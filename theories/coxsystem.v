@@ -239,11 +239,11 @@ Definition coxsys_of (G : coxgrpT) : Coxeter_system G :=
 
 End Defs.
 
-Notation "{ 'coxgrp' gT }" := (coxgrp_of (Phant gT))
-  (at level 0, format "{ 'coxgrp'  gT }") : type_scope.
+Notation "{ 'coxgroup' gT }" := (coxgrp_of (Phant gT))
+  (at level 0, format "{ 'coxgroup'  gT }") : type_scope.
 
-Notation "[ 'coxgrp' 'of' G ]" := (clone_coxgrp (@coxgrp _ G))
-  (at level 0, format "[ 'coxgrp'  'of'  G ]") : form_scope.
+Notation "[ 'coxgroup' 'of' G ]" := (clone_coxgrp (@coxgrp _ G))
+  (at level 0, format "[ 'coxgroup'  'of'  G ]") : form_scope.
 Abbreviation coxsys G := (coxsys_of (clone_coxgrp (@coxgrp _ G))).
 
 Notation "''I[' g ]" := (@coxind _ _ (coxsys g)).
@@ -262,7 +262,7 @@ Notation "''s_' [ w ]" := (\prod_(i <- w) 's_i) : group_scope.
 
 Section Basic.
 
-Variables (gT : finGroupType) (W : {coxgrp gT}).
+Variables (gT : finGroupType) (W : {coxgroup gT}).
 Local Notation "''I'" := 'I[W].
 Implicit Types (i : 'I) (s : seq 'I).
 
@@ -310,9 +310,10 @@ End Basic.
 #[export] Hint Resolve memcoxs memcoxw : core.
 
 
+
 Section Reflections.
 
-Variables (gT : finGroupType) (W : {coxgrp gT}).
+Variables (gT : finGroupType) (W : {coxgroup gT}).
 Local Notation "''I'" := 'I[W].
 Local Abbreviation word := (seq 'I).
 Implicit Types (i : 'I) (s : word).
