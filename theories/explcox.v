@@ -68,14 +68,15 @@ End Triv.
 Section Bool.
 
 (** to avoid canonical on setT_group *)
-Definition bgroup : {group bool} := [set: bool].
+Definition bool_group : {group bool} := [set: bool].
 
 Definition bool_coxmat := fun _ : 'I_1 * 'I_1 => 1%N.
 Definition bool_coxgen := fun _ : 'I_1 => true.
 
 Fact bool_coxmatP : bool_coxmat \is a Coxeter_matrix.
 Proof. by apply/Coxeter_matrixP; split => [][[|]// H1][[|]]. Qed.
-Fact bool_present : (bool_coxgen, coxrels_of_mat bool_coxmat) \present bgroup.
+Fact bool_present :
+  (bool_coxgen, coxrels_of_mat bool_coxmat) \present bool_group.
 Proof.
 have nbrel : size (coxrels_of_mat bool_coxmat) = 1%N.
   by rewrite size_allpairs size_enum_ord muln1.
@@ -88,7 +89,7 @@ apply (eq_from_nth (x0 := ord0)); rewrite size_enum_ord // => i _.
 by rewrite !ord1.
 Qed.
 Canonical bool_coxgrp := CoxGrp (CoxSys bool_coxmatP bool_present).
-Let test : {coxgroup _} := bgroup.
+Let test : {coxgroup _} := bool_group.
 
 End Bool.
 
@@ -118,7 +119,7 @@ Qed.
 Definition bact_gaction : groupAction [set: bool] [set: 'I_n] := GroupAction bactP.
 Definition dihedral_type := sdprod_by bact_gaction.
 (** to avoid canonical on setT_group *)
-Definition dihedral : {group dihedral_type} := [set: dihedral_type].
+Definition dihedral_group : {group dihedral_type} := [set: dihedral_type].
 
 Definition dh1 : dihedral_type := sdpair2 _ true.
 Definition dh2 : dihedral_type := sdpair2 _ true * sdpair1 _ Zp1.
@@ -161,7 +162,7 @@ Fact dihedral_coxmatP : dihedral_coxmat \is a Coxeter_matrix.
 Proof. by apply/Coxeter_matrixP; split => [][|][|]. Qed.
 Fact dihedral_present :
   ((fun b => if b then dh1 else dh2), coxrels_of_mat dihedral_coxmat)
-    \present dihedral.
+    \present dihedral_group.
 Proof.
 apply Presentation => /=.
 - apply/esym/eqP; rewrite -subTset.
@@ -211,10 +212,10 @@ apply Presentation => /=.
 Qed.
 Canonical dihedral_coxgroup
   := Eval hnf in CoxGrp (CoxSys dihedral_coxmatP dihedral_present).
-Let test : {coxgroup dihedral_type} := dihedral.
+Let test : {coxgroup dihedral_type} := dihedral_group.
 
 End Dihedral.
-Notation "''D_' n" := (dihedral n) (at level 2, format "''D_' n").
+Notation "''D_' n" := (dihedral_group n) (at level 2, format "''D_' n").
 
 
 Section ProductsMat.
@@ -280,20 +281,19 @@ Variables (gT hT : finGroupType) (G : {coxgroup gT}) (H : {coxgroup hT}).
 Let injG := restrm (subsetT G) (@pairg1 gT hT).
 Let injH := restrm (subsetT H) (@pair1g gT hT).
 
+(* The setX_group below is necessary to avoid the Canonical being stuck *)
+(* by a reverse_coercion in front of setX.                              *)
 Lemma coxSetX_present :
   (dprod_gens (injG \o 'S[G]) (injH \o 'S[H]),
-    coxrels_of_mat (dprod_coxmat G H)) \present (setX G H).
+    coxrels_of_mat (dprod_coxmat G H)) \present (setX_group G H).
 Proof.
 apply: (satisfy_eq_present _ (present_setX (coxpresP G) (coxpresP H))).
 by move=> T gen; rewrite dprod_coxmatE.
 Qed.
-(* The following Canonical doesn't work due to a reverse_coercion *)
-(* in front of setX                                               *)
 Canonical setX_coxgrp :=
   Eval hnf in CoxGrp (CoxSys (dprod_coxmatP G H) coxSetX_present).
 
-(**
-Fail Check (setX G H) : {coxgroup _}.
-Print Canonical Projections. *)
+Let test : {coxgroup gT * hT} := setX G H.
+(* Print Canonical Projections. *)
 
 End CoxSetX.
