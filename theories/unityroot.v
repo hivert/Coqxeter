@@ -1,8 +1,10 @@
 From HB Require Import structures.
+From Stdlib Require Import ZifyClasses ZArith.
 From mathcomp Require Import boot order.
 From mathcomp Require Import algebra ssrint ssralg ssrnum algC closed_field.
 From mathcomp Require Import poly separable polydiv cyclotomic.
-From mathcomp Require Import ring_tactic field_tactic.
+From mathcomp Require Import ring_tactic field_tactic ssrZ zify arithmetic_tactic.
+
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -20,6 +22,11 @@ Local Definition rpred_simpl :=
   (rpredD, rpredB, rpred1, rpred0, rpredN, rpredM, rpredV, algRvalP).
 
 Hint Resolve algRvalP : core.
+
+
+Lemma neq20 : 2 != 0 :> algC.
+Proof. by have /pcharf0P -> := Cpchar. Qed.
+Hint Resolve neq20 : core.
 
 
 Section RingTheory.
@@ -121,7 +128,7 @@ Qed.
 
 
 Variables (n : nat).
-Hypothesis (npos : (0 < n)%N).
+Hypothesis (gtn0 : (0 < n)%N).
 
 Definition geompol : {poly R} := \poly_(i < n) 1.
 
@@ -145,7 +152,7 @@ rewrite geompolE; apply/idP/andP => [Hr | [ + /negbTE neq1]].
   split; first by rewrite /root_of_unity exprD1 rootM orbC Hr.
   apply/contraL: Hr => /eqP ->; apply/negP => /rootP; rewrite horner_sum.
   under eq_bigr do rewrite hornerXn expr1n.
-  by rewrite sumr_const_nat subn0 => /eqP; rewrite pnatr_eq0 -leqn0 leqNgt npos.
+  by rewrite sumr_const_nat subn0 => /eqP; rewrite pnatr_eq0 -leqn0 leqNgt gtn0.
 rewrite /root_of_unity exprD1 rootM => /orP[|//].
 by rewrite root_XsubC neq1.
 Qed.
@@ -159,6 +166,7 @@ End GeometricPoly.
 
 
 Implicit Type (y z : algC) (t : algR).
+
 
 Definition unitcircle : pred algC := [pred z | `|z| ^+ 2 == 1].
 
@@ -203,12 +211,16 @@ Proof. by rewrite unitcircleV => cz; exact/unitcircleXn. Qed.
 Lemma unity_root_unitcircle n z :
   (0 < n)%N -> n.-unity_root z -> z \in unitcircle.
 Proof.
-rewrite /root_of_unity /root !hornerE subr_eq0 => npos.
+rewrite /root_of_unity /root !hornerE subr_eq0 => gtn0.
 move/eqP/(congr1 normr)/eqP; rewrite normr1 normrX pexpr_eq1 // => /eqP nz.
 by apply/unitcircleP; rewrite nz expr1n.
 Qed.
 
-
+Lemma in_unitycircleV z : z \in unitcircle -> z^-1 = z^*.
+Proof.
+move=> /[dup] /unitcircleP zu /unitcircle_neq0/[dup] nz0 /lregP; apply.
+by rewrite divff // -normCK zu.
+Qed.
 
 Definition param t : algC :=
   ((t ^+ 2 - 1) / (t ^+ 2 + 1) : algC) + 'i * ((2 * t) / (t ^+ 2 + 1) : algC).
@@ -223,13 +235,13 @@ Proof. exact: (Re_rect (Re_paramP t) (Im_paramP t)). Qed.
 Lemma Im_paramE t : 'Im (param t) = (2 * t) / (t ^+ 2 + 1).
 Proof. exact: (Im_rect (Re_paramP t) (Im_paramP t)). Qed.
 
-Lemma sqp1pos t : (t ^+ 2 + 1 : algC) > 0.
+Lemma sqp1_gt0 t : (t ^+ 2 + 1 : algC) > 0.
 Proof.
 apply: (lt_le_trans ltr01); rewrite -{1}(add0r 1); apply: lerD => //.
 by rewrite -realEsqr.
 Qed.
 Lemma sqp1_ne0 t : (t ^+ 2 + 1 : algC) !=  0.
-Proof. exact: (lt0r_neq0 (sqp1pos t)). Qed.
+Proof. exact: (lt0r_neq0 (sqp1_gt0 t)). Qed.
 Lemma addCi_ne0 t : \val t + 'i != 0.
 Proof.
 apply/negP => /eqP/(congr1 (fun z => 'Im z))/eqP; rewrite raddfD /=.
@@ -272,8 +284,7 @@ Proof.
 move=> t; apply val_inj; rewrite /= Re_paramE Im_paramE.
 have den1 := sqp1_ne0 t.
 have den2 : t ^+ 2 + 1 - (t ^+ 2 + -1) != 0 :> algC.
-  rewrite /= [X in X != 0](_ : _ = 2); first ring.
-  by have /pcharf0P -> := Cpchar.
+  by rewrite /= [X in X != 0](_ : _ = 2); first ring.
 field by done.
 Qed.
 
@@ -294,12 +305,10 @@ split; rewrite {}/pa {}/pb !mulrA.
   move/eqP : uc; rewrite eq_sym addrC -subr_eq => /eqP <- {b bR}.
   have -> : (1 - a ^+ 2) / (1 - a) ^+ 2 = (1 + a) / (1 - a) by field.
   have idt : 1 + a + (1 - a) != 0.
-    rewrite /= [X in X != 0](_ : _ = 2); first ring.
-     by have /pcharf0P -> := Cpchar.
+    by rewrite /= [X in X != 0](_ : _ = 2); first ring.
   field by done.
 rewrite ![_ * b]mulrC !mulrA -mulrA -invfM -!expr2.
-suff -> : (1 - a) * (b ^+ 2 / (1 - a) / (1 - a) + 1) = 2.
-  by rewrite mulfK //; have /pcharf0P -> := Cpchar.
+suff -> : (1 - a) * (b ^+ 2 / (1 - a) / (1 - a) + 1) = 2 by rewrite mulfK.
 rewrite mulrDr mulr1 mulrC divfK //.
 move/eqP : uc; rewrite eq_sym addrC -subr_eq => /eqP <- {b bR}.
 field.
@@ -342,13 +351,13 @@ have /lregP/inj_eq <- := @neq0Ci algC.
 rewrite mulr0 mulrA mulCii mulNr mul1r oppr_eq0 => /esym/eqP->.
 by rewrite mul0r.
 Qed.
-Lemma param_inv_pos z : z \in unitcircle -> (param_inv z > 0) = ('Im z > 0).
+Lemma param_inv_gt0 z : z \in unitcircle -> (param_inv z > 0) = ('Im z > 0).
 Proof.
 move/sgr_param_inv; rewrite -sgr_gt0 sgr_algRval -mono_lt_algRval /= => ->.
 have := sgr_gt0 (in_algR (Creal_Im z)).
 by rewrite -mono_lt_algRval /= -mono_lt_algRval /= -sgr_algRval /=.
 Qed.
-Lemma param_inv_nneg z : z \in unitcircle -> (param_inv z >= 0) = ('Im z >= 0).
+Lemma param_inv_ge0 z : z \in unitcircle -> (param_inv z >= 0) = ('Im z >= 0).
 Proof.
 move/sgr_param_inv; rewrite -sgr_ge0 sgr_algRval -mono_le_algRval /= => ->.
 have := sgr_ge0 (in_algR (Creal_Im z)).
@@ -381,7 +390,7 @@ rewrite -{3}[b](mulfK (x := a - b)) ?subr_eq0 //.
 have {}ltba : 0 < a - b by rewrite subr_gt0.
 rewrite -mulrBl mulr_gt0 // ?invr_gt0 // mulrBr.
 rewrite opprB addrC addrA subrK.
-exact: sqp1pos.
+exact: sqp1_gt0.
 Qed.
 
 Lemma param_incr t1 t2 : 0 <= t1 < t2 -> 'Re (param t1) < 'Re (param t2).
@@ -390,7 +399,7 @@ rewrite !Re_paramE => /andP[le0t1 lt12]; rewrite -subr_gt0.
 have le0t2 := ltW (le_lt_trans le0t1 lt12).
 rewrite [X in 0 < X](_ : _ = 2*(\val t2^+2 - t1^+2)/(t1^+2 + 1)/(t2^+2 + 1)).
   field by apply: sqp1_ne0.
-repeat apply: mulr_gt0 => //; rewrite ?invr_gt0 ?sqp1pos //=.
+repeat apply: mulr_gt0 => //; rewrite ?invr_gt0 ?sqp1_gt0 //=.
 by rewrite subr_gt0 ltr_sqr.
 Qed.
 
@@ -408,7 +417,7 @@ Proof. by apply/relpre_trans => a b c /= /(lt_trans _) /[apply]. Qed.
 
 Section Zeta.
 
-Variables (n : nat) (npos : (0 < n)%N).
+Variables (n : nat) (gtn0 : (0 < n)%N).
 
 Definition geomroots :=
   sort leparam (sval (closed_field_poly_normal (geompol n))).
@@ -446,7 +455,7 @@ Proof. by apply/allP => /= x; rewrite mem_geomroots_unity => /andP[]. Qed.
 Lemma geomroots_unitcircle1 : all (predI unitcircle (predC1 1)) geomroots.
 Proof.
 apply/allP => /= x; rewrite mem_geomroots_unity.
-by move=> /andP[/(unity_root_unitcircle npos) + -> /[!andbT]].
+by move=> /andP[/(unity_root_unitcircle gtn0) + -> /[!andbT]].
 Qed.
 
 Lemma geomroots_lesorted : sorted leparam geomroots.
@@ -483,7 +492,7 @@ pose r := nth 1 geomroots b.+1 / zeta.
 have eqzeta : nth 1 geomroots b.+1 = r * zeta.
   rewrite divfK // /zeta; apply/negP => /eqP Habs.
   move/(all_nthP 1 geomrootsP): lt0; rewrite {}Habs.
-  by rewrite unity_rootE expr0n (negbTE (lt0n_neq0 npos)) /= eq_sym oner_eq0.
+  by rewrite unity_rootE expr0n (negbTE (lt0n_neq0 gtn0)) /= eq_sym oner_eq0.
 have rin : r \in geomroots.
   rewrite mem_geomroots_unity; apply/andP; split.
     by apply: rpred_div => //; apply/(all_nthP 1 geomrootsP).
@@ -512,13 +521,13 @@ move/eqP; rewrite (nth_uniq _ _ _ geomroots_uniq) //=.
 by move: ltind; rewrite eqSS => /[swap]/eqP-> /[!ltnn].
 Qed.
 
-
+(* Stated here as a local lemma to avoid breaking the section *)
 Local Lemma zeta1tmp : n = 1%N -> zeta = 1.
 Proof. by move=> eqn; rewrite /zeta nth_default // size_geomroots eqn. Qed.
 Lemma zeta_in_geomroots : n != 1 -> zeta \in geomroots.
 Proof.
 move=> neqn1; rewrite /zeta mem_nth // size_geomroots.
-by case: n npos neqn1 => // -[|].
+by case: n gtn0 neqn1 => // -[|].
 Qed.
 Lemma zetaP : n.-unity_root zeta.
 Proof.
@@ -531,12 +540,12 @@ Proof. by move/zeta_in_geomroots; rewrite mem_geomroots_unity => /andP[]. Qed.
 
 
 Lemma zeta_unitcircle : zeta \in unitcircle.
-Proof. exact: unity_root_unitcircle npos zetaP. Qed.
+Proof. exact: unity_root_unitcircle gtn0 zetaP. Qed.
 Lemma zeta_neq0 : zeta != 0.
 Proof. exact/unitcircle_neq0/zeta_unitcircle. Qed.
 Lemma zeta_primitive : n.-primitive_root zeta.
 Proof.
-rewrite /primitive_root_of_unity npos /=; apply/forallP => /= -[i ltin /=].
+rewrite /primitive_root_of_unity gtn0 /=; apply/forallP => /= -[i ltin /=].
 case: (altP (i.+1 =P n)) => [{i ltin}-> | neq1in]; first by rewrite zetaP.
 apply/eqP/(introF idP).
 rewrite /root_of_unity /root !hornerE subr_eq0 => /eqP Heq.
@@ -556,6 +565,7 @@ rewrite geomrootsXE => /mapP[/= i].
 by rewrite mem_iota add1n prednK // => lt0in ->; exists i.
 Qed.
 
+(* Stated here as a local lemma to avoid breaking the section *)
 Local Lemma zeta2tmp : n = 2%N -> zeta = -1.
 Proof.
 move=> eqn.
@@ -602,14 +612,14 @@ move=> eqj2.
 have:= zetaP; rewrite unity_rootE -eqj2 -addnn exprD -expr2 sqrf_eq1.
 move=> /orP[] /eqP //.
 suff: (0 < j < n)%N by move=> /zetaXn_neq1/[swap]-> /= /[!eqxx].
-have:= npos; rewrite -{}eqj2.
+have:= gtn0; rewrite -{}eqj2.
 by case: j => // j _ /=; rewrite -addnn addnS ltnS addSn ltnS leq_addr.
 Qed.
 
 Lemma Re_zetaXn_le i j :
   (i <= j < n)%N -> 'Im (zeta ^+ j) >= 0 -> 'Im (zeta ^+ i) >= 0.
 Proof.
-rewrite -!param_inv_nneg ?unitcircleXn ? zeta_unitcircle //.
+rewrite -!param_inv_ge0 ?unitcircleXn ? zeta_unitcircle //.
 rewrite leq_eqVlt; case: eqP => [{j}<- // | _ /=].
 case: i => [_ _ | i]; first by rewrite expr0 param_inv1.
 move=> /andP[/[dup]ltij /ltn_trans + /[dup]] => /[apply] ltin ltjn.
@@ -628,13 +638,12 @@ rewrite -!exprD (subnKC (ltnW ltin)) -normCK (unity_rootP zetaP).
 by rewrite (unitcircleP _ zetaX_uc).
 Qed.
 
-Lemma Im_zetaXn_pos i : (0 < i < uphalf n)%N -> 0 < 'Im (zeta ^+ i).
+Lemma Im_zetaXn_gt0 i : (0 < i < uphalf n)%N -> 0 < 'Im (zeta ^+ i).
 Proof.
 case/andP=> lt0i ltin2.
 have ltin : (i < n)%N.
   by apply: (leq_trans ltin2); rewrite leq_uphalf_double -addnn leq_addr.
-rewrite -(oppr_ltr (Creal_Im _)) -Im_conj.
-rewrite conj_zetaX //.
+rewrite -(oppr_ltr (Creal_Im _)) -Im_conj conj_zetaX //.
 have /ltparam_zetaXn ltp : (0 < i < n)%N by rewrite lt0i ltin.
 have {}/ltp ltp : (0 < n - i < n)%N.
   by rewrite subn_gt0 ltin /= ltn_psubLR // -{1}(add0n n) ltn_add2r.
@@ -647,27 +656,29 @@ have [-> -> /=] := Re_unitcircle (unitcircleXn i zeta_unitcircle).
 suff : zeta ^+ i \in geomroots by rewrite mem_geomroots_unity => /andP[].
 by apply: zetaXn_geomroots; rewrite lt0i ltin.
 Qed.
-Lemma Im_zetaXn_neg i : (n./2 < i < n)%N -> 'Im (zeta ^+ i) < 0.
+Lemma Im_zetaXn_lt0 i : (n./2 < i < n)%N -> 'Im (zeta ^+ i) < 0.
 Proof.
 rewrite ltn_half_double => /andP[ltn2i ltin].
 rewrite -oppr_gt0 -Im_conj conj_zetaX //.
-apply: Im_zetaXn_pos; rewrite subn_gt0 ltin /=.
+apply: Im_zetaXn_gt0; rewrite subn_gt0 ltin /=.
 rewrite gtn_uphalf_double doubleB ltn_subLR ?leq_double ?(ltnW ltin) //.
 by rewrite -addnn ltn_add2r.
 Qed.
-Lemma Im_zeta_pos : 0 <= 'Im zeta ?= iff (n <= 2)%N.
+
+Lemma Im_zeta_gt0 : (2 < n)%N -> 0 < 'Im zeta.
 Proof.
-move: npos; rewrite leq_eqVlt eq_sym => /orP[/eqP eqn1 | lt1n].
-  rewrite zeta1tmp // eqn1 /= (Creal_ImP _ (@real1 _)).
-  by split => //; rewrite eqxx.
-have:= lt1n; rewrite leq_eqVlt eq_sym => /orP[/eqP eqn2 | lt2n].
-  rewrite zeta2tmp // eqn2 /= raddfN  /= (Creal_ImP _ (@real1 _)) oppr0.
-  by split => //; rewrite eqxx.
-suff H : 0 < 'Im zeta.
-  split; first exact: ltW.
-  by rewrite lt_eqF // leqNgt lt2n.
-rewrite -(expr1 zeta); apply: Im_zetaXn_pos.
+move=> gtn2.
+rewrite -(expr1 zeta); apply: Im_zetaXn_gt0.
 by rewrite ltnSn /= gtn_uphalf_double -addnn add1n.
+Qed.
+
+Lemma Im_zeta_ge0 : 0 <= 'Im zeta.
+Proof.
+move: gtn0; rewrite leq_eqVlt eq_sym => /orP[/eqP eqn1 | lt1n].
+  by rewrite zeta1tmp //= (Creal_ImP _ (@real1 _)).
+have:= lt1n; rewrite leq_eqVlt eq_sym => /orP[/eqP eqn2 | lt2n].
+  by rewrite zeta2tmp // raddfN  /= (Creal_ImP _ (@real1 _)) oppr0.
+exact: (ltW (Im_zeta_gt0 lt2n)).
 Qed.
 
 Lemma Re_zetaXnlt i j :
@@ -690,11 +701,11 @@ have lt0jn : (0 < j < n)%N.
 rewrite -(param_invK (zetaXn_unitcircle1 lt0in)).
 rewrite -(param_invK (zetaXn_unitcircle1 lt0jn)).
 apply: param_incr; apply/andP; split; last exact: ltparam_zetaXn.
-rewrite param_inv_nneg ?unitcircleXn // ?zeta_unitcircle //.
+rewrite param_inv_ge0 ?unitcircleXn // ?zeta_unitcircle //.
 move: lej2n; rewrite leq_eqVlt => /orP[/eqP /zetax_halfn ->|].
   by rewrite raddfN /= (Creal_ImP _ (@real1 _)) oppr0.
 rewrite -gtn_uphalf_double => ltjup.
-by apply/ltW/Im_zetaXn_pos; rewrite (ltn_trans lt0i ltij).
+by apply/ltW/Im_zetaXn_gt0; rewrite (ltn_trans lt0i ltij).
 Qed.
 Lemma Re_zetaXnle i j :
   (i <= j <= n./2)%N -> 'Re (zeta ^+ i) >= 'Re (zeta ^+ j).
@@ -722,7 +733,7 @@ Lemma eq_zeta z :
   n.-unity_root z -> z != 1 -> 'Im z >= 0 ->
   (forall y, n.-unity_root y -> y != 1 -> 'Re y <= 'Re z) -> z = zeta.
 Proof.
-have := npos; rewrite leq_eqVlt => /orP[ /eqP/esym -> + + _ _| lt1n].
+have := gtn0; rewrite leq_eqVlt => /orP[ /eqP/esym -> + + _ _| lt1n].
   by rewrite unity_rootE expr1 => /eqP -> /[!eqxx].
 move=> zu zn1 Imz Remax.
 have [i lt0in eqz] := unity_zetaXE zu zn1.
@@ -734,16 +745,16 @@ have /eqP : 'Im z ^+2 = 'Im zeta ^+ 2.
   rewrite -[LHS](addrK ('Re z ^+ 2)); apply/eqP; rewrite subr_eq; apply/eqP.
   rewrite [LHS]addrC [RHS]addrC [in RHS]eqRe -!normC2_Re_Im.
   rewrite (unitcircleP _ zeta_unitcircle).
-  by rewrite (unitcircleP _ (unity_root_unitcircle npos zu)).
+  by rewrite (unitcircleP _ (unity_root_unitcircle gtn0 zu)).
 rewrite eqf_sqr => /orP[]// /eqP eqIm.
   by apply/eqP; rewrite eqC eqRe eqIm !eqxx.
 have {}Imz : 'Im z = 0.
-  by apply le_anti; rewrite Imz eqIm oppr_le0 Im_zeta_pos.
+  by apply le_anti; rewrite Imz eqIm oppr_le0 Im_zeta_ge0.
 apply/eqP; rewrite eqC eqRe eqxx Imz /=.
 by move/eqP: eqIm; rewrite -eqr_oppLR Imz oppr0.
 Qed.
 
-Lemma eq_zeta_Im_pos z :
+Lemma Im_gt0_eq_zeta z :
   n.-unity_root z -> z != 1 -> 'Im z >= 0 ->
   (forall y, n.-unity_root y -> y != 1 -> Im y >= 0 -> 'Re y <= 'Re z)
   -> z = zeta.
@@ -756,67 +767,22 @@ by rewrite -conjC1 (inj_eq (can_inj (@conjCK _))).
 Qed.
 
 End Zeta.
+
 Notation "''zeta_' i" := (zeta i) (at level 1, format "''zeta_' i").
 
-
-Lemma zeta1 : 'zeta_1 = 1.  Proof. exact: zeta1tmp. Qed.
-Lemma zeta2 : 'zeta_2 = -1. Proof. exact: zeta2tmp. Qed.
-Lemma zeta3 : 'zeta_3 = (-1 + 'i * sqrtC 3)/2.
-Proof.
-set j : algC := (X in _ = X).
-have addjj : - (j + conjC j) = 1.
-  apply/eqP; rewrite eqr_oppLR; apply/eqP.
-  have ne20 : 2 != 0 :> algC by have /pcharf0P -> := Cpchar.
-  rewrite -[LHS](mulfK ne20) mulrDl -{2}(@conj_Creal _ 2) // -rmorphM /=.
-  by rewrite -ReE /j divfK // Re_rect // ?rpred_simpl // sqrtC_real.
-have prodjj : j * conjC j = 1.
-  rewrite -normCK /j mulrDl -mulrA normC2_rect ?rpred_simpl ?sqrtC_real //.
-  field: (@sqrtCK algC 3).
-have geompol3 : geompol 3%N = ('X - j%:P) * ('X - j^*%:P).
-  rewrite geompolE /index_iota /= 2!big_cons big_seq1 expr0 expr1.
-  rewrite -polyC1 -prodjj -{1}['X]mulr1 -polyC1 -addjj.
-  rewrite rmorphM raddfN raddfD /=; ring.
-have root3 (z : algC) : root (geompol 3%N) z = (z == j) || (z == j^*).
-  by rewrite geompol3 rootM !root_XsubC.
-have root3j : root (geompol 3%N) j by rewrite root3 eqxx.
-apply/esym/eq_zeta => //.
-- by move: root3j; rewrite root_geompolE // => /andP[].
-- by move: root3j; rewrite root_geompolE // => /andP[].
-- rewrite /j mulrDl -mulrA Im_rect // ?rpred_simpl // ?sqrtC_real //.
-  by apply: divr_ge0; rewrite // sqrtC_ge0.
-move=> y yu3 yn1.
-have: root (geompol 3) y by rewrite root_geompolE // yu3 yn1.
-by rewrite root3 => /orP[]/eqP-> // /[!Re_conj].
-Qed.
-Lemma zeta4 : 'zeta_4 = 'i.
-Proof.
-apply/esym/eq_zeta => //.
-- by apply/unity_rootP; rewrite -[4%N]/(2 * 2)%N exprM sqrCi sqrrN expr1n.
-- apply/negP => /eqP/(congr1 (fun x => 'Re x))/esym/eqP.
-  by rewrite Re_i (Creal_ReP _ (@real1 _)) oner_eq0.
-- by rewrite Im_i ler01.
-rewrite Re_i => y; rewrite unity_rootE.
-rewrite -subr_eq0 -[4%N]/(2 * 2)%N exprM !subr_sqr_1.
-rewrite -{3}(opprK 1) -{2}sqrCi subr_sqr !mulrA !mulf_eq0 -!orbA.
-rewrite !subr_eq0 !addr_eq0 => /or4P[]/eqP->.
-- by rewrite eqxx.
-- by rewrite raddfN /= (Creal_ReP _ (@real1 _)) lerN10.
-- by rewrite Re_i.
-- by rewrite raddfN /= Re_i oppr0.
-Qed.
 
 Lemma zetaM m n : (0 < m * n)%N -> 'zeta_(m * n) ^+ m = 'zeta_n.
 Proof.
 move=> /[dup] lt0mn; rewrite muln_gt0 => /andP[lt0m lt0n].
 have:= lt0n; rewrite leq_eqVlt eq_sym => /orP[/eqP -> | lt1n].
-  by rewrite muln1 zeta1; apply/unity_rootP/zetaP.
-apply: eq_zeta_Im_pos => //.
+  by rewrite muln1 [RHS]zeta1tmp //; apply/unity_rootP/zetaP.
+apply: Im_gt0_eq_zeta => //.
 - by apply/unity_rootP; rewrite -exprM; apply/unity_rootP/zetaP.
 - by apply/zetaXn_neq1; rewrite // lt0m /= ltn_Pmulr //.
 - move: lt1n; rewrite leq_eqVlt eq_sym => /orP[/eqP -> | lt2n].
     rewrite zetax_halfn ?muln2 ?double_gt0 //.
     by rewrite raddfN /= (Creal_ImP _ (@real1 _)) oppr0.
-  apply/ltW/Im_zetaXn_pos; rewrite // lt0m /= gtn_uphalf_double.
+  apply/ltW/Im_zetaXn_gt0; rewrite // lt0m /= gtn_uphalf_double.
   by rewrite -muln2 ltn_mul2l lt0m lt2n.
 move=> y yun neqy1.
 have /(unity_zetaXE lt0mn) : (m * n).-unity_root y.
@@ -824,7 +790,7 @@ have /(unity_zetaXE lt0mn) : (m * n).-unity_root y.
 case/(_  neqy1) => k /andP[lt0k ltkmn] /[dup]eqy -> le0Im.
 case: (leqP k (m * n)./2) => [lekmn2 | ltmn2k]; first last.
   exfalso.
-  have /(Im_zetaXn_neg lt0mn) : ((m * n)./2 < k < m * n)%N by rewrite ltmn2k.
+  have /(Im_zetaXn_lt0 lt0mn) : ((m * n)./2 < k < m * n)%N by rewrite ltmn2k.
   by move/(le_lt_trans le0Im); rewrite ltxx.
 apply: Re_zetaXnle; rewrite // lekmn2 andbT.
 apply: (dvdn_leq lt0k); rewrite -(dvdn_pmul2r lt0n).
@@ -840,4 +806,122 @@ have le0mn : (0 < m * n)%N by rewrite muln_gt0 lt0m lt0n.
 have := le0mn; rewrite mulnC -(zetaM le0mn) => /zetaM <- /[!(mulnC n)].
 apply: Re_zetaXnlt; rewrite // ltmn /=.
 by rewrite geq_half_double -muln2 mulnC leq_pmul2r.
+Qed.
+
+
+Lemma zeta1 : 'zeta_1 = 1.  Proof. exact: zeta1tmp. Qed.
+Lemma zeta2 : 'zeta_2 = -1. Proof. exact: zeta2tmp. Qed.
+Lemma zeta3 : 'zeta_3 = -1 / 2 + 'i * (sqrtC 3 / 2).
+Proof.
+set j : algC := (RHS).
+have addjjC : - (j + conjC j) = 1.
+  apply/eqP; rewrite eqr_oppLR; apply/eqP.
+  rewrite -[LHS](mulfK neq20) mulrDl -{2}(@conj_Creal _ 2) // -rmorphM /=.
+  by rewrite -ReE /j mulrA -mulrDl divfK // Re_rect // ?rpred_simpl // sqrtC_real.
+have prodjjC : j * conjC j = 1.
+  rewrite -normCK /j normC2_rect ?rpred_simpl ?sqrtC_real //.
+  field: (@sqrtCK algC 3).
+have {addjjC prodjjC}gpol3E : geompol 3%N = ('X - j%:P) * ('X - j^*%:P).
+  rewrite geompolE /index_iota /= 2!big_cons big_seq1 expr0 expr1.
+  rewrite -polyC1 -prodjjC -/j -{1}['X]mulr1 -polyC1 -addjjC -/j.
+  rewrite rmorphM raddfN raddfD /=; ring.
+have {gpol3E} root3 (z : algC) : root (geompol 3%N) z = (z == j) || (z == j^*).
+  by rewrite gpol3E rootM !root_XsubC.
+have : 'zeta_3 \in geomroots 3 by apply zeta_in_geomroots.
+rewrite mem_geomrootsE // root3 => /orP[/eqP //| /eqP Habs].
+exfalso; have : 'Im j > 0.
+  rewrite /j Im_rect ?rpred_simpl // ?sqrtC_real //.
+  by apply: divr_gt0 => //; rewrite sqrtC_gt0.
+by rewrite -oppr_lt0 -Im_conj -Habs real_ltNge // Im_zeta_ge0.
+Qed.
+Lemma zeta4 : 'zeta_4 = 'i.
+Proof.
+have /eqP : 'zeta_4 ^+ 2 = 'i ^+ 2.
+  by rewrite -[4%N]/(2 * 2)%N zetaM // zeta2 sqrCi.
+rewrite eq_sym eqf_sqr => /orP[/eqP -> // | /eqP Habs].
+exfalso; have : 'Im ('i : algC) > 0 by rewrite Im_i.
+by rewrite Habs raddfN /= oppr_gt0 real_ltNge // Im_zeta_ge0.
+Qed.
+Lemma Re_zeta_gt0 n : (4 < n)%N -> 0 < 'Re 'zeta_n.
+Proof. by move=> gtn4; rewrite -Re_i -zeta4 Re_zeta_lt. Qed.
+Lemma zeta6 : 'zeta_6 = 1 / 2 + 'i * (sqrtC 3 / 2).
+Proof.
+transitivity (- 'zeta_3 ^*); first last.
+  rewrite zeta3 rmorphD !rmorphM /= [(2^-1)^*](CrealP _) ?rpred_simpl //.
+  rewrite raddfD raddfN /=  conjC1 -mulNr !opprK.
+  by rewrite conjCi mulNr opprK (CrealP (sqrtC_real _)).
+rewrite -in_unitycircleV ?zeta_unitcircle //.
+apply: (rregP (@zeta_neq0 3 _)) => //.
+rewrite mulNr [in RHS]mulrC divff ?(@zeta_neq0 3 _) //.
+have /zetaM <- : (0 < 2 * 3)%N by [].
+rewrite -[X in X * _]expr1 -[6%N]/(2 * 3)%N -exprD -[(1 + 2)%N]/3%N.
+by rewrite mulnC zetaM // zeta2.
+Qed.
+Lemma zeta8 : 'zeta_8 = sqrtC 2 / 2 + 'i * (sqrtC 2 / 2).
+Proof.
+set r : algC := (RHS).
+have /eqP : r ^+ 2 = 'zeta_8 ^+ 2.
+  rewrite -[8%N]/(2 * 4)%N zetaM // zeta4 /r.
+  by rewrite expr2 mulC_rect; field : (@sqrtCK algC 2).
+rewrite eqf_sqr => /orP[/eqP -> // | /eqP Habs].
+exfalso; have : 'Im r > 0.
+  rewrite /r Im_rect ?rpred_simpl // ?sqrtC_real //.
+  by apply: divr_gt0 => //; rewrite sqrtC_gt0.
+by rewrite Habs raddfN /= oppr_gt0 real_ltNge // Im_zeta_ge0.
+Qed.
+Lemma zeta12 : 'zeta_12 = sqrtC 3 / 2 + 'i / 2.
+Proof.
+set r : algC := (RHS).
+have /eqP : r ^+ 2 = 'zeta_12 ^+ 2.
+  rewrite -[12%N]/(2 * 6)%N zetaM // zeta6 /r.
+  by rewrite expr2 mulC_rect; field : (@sqrtCK algC 3).
+rewrite eqf_sqr => /orP[/eqP -> // | /eqP Habs].
+exfalso; have : 'Im r > 0.
+  by rewrite /r Im_rect ?rpred_simpl // ?sqrtC_real // invr_gt0 //.
+by rewrite Habs raddfN /= oppr_gt0 real_ltNge // Im_zeta_ge0.
+Qed.
+
+Lemma zeta5 : 'zeta_5 = (sqrtC 5 - 1) / 4 + 'i * (sqrtC (10 + 2 * sqrtC 5) / 4).
+Proof.
+have z5n0 : 'zeta_5 != 0 by rewrite zeta_neq0.
+have : 'zeta_5 \in geomroots 5 by apply zeta_in_geomroots.
+rewrite mem_geomrootsE // geompolE /index_iota /= 4!big_cons big_seq1.
+rewrite /root !hornerE /= expr0 expr1 => /eqP zeq.
+have {zeq} : ('zeta_5 ^+ 2 + 'zeta_5 ^- 2) + ('zeta_5 + 'zeta_5 ^- 1) + 1 = 0.
+  have := z5n0; rewrite -sqrf_eq0 => /lregP; apply.
+  by rewrite mulr0 -{}zeq !mulrDr -!exprD; field by assumption.
+set r : algC := 'zeta_5 + 'zeta_5 ^- 1 => req.
+have eqrC : r = 2 * 'Re 'zeta_5.
+  by rewrite ReE mulrC divfK // /r in_unitycircleV // expr1 zeta_unitcircle.
+have rreal : r \is real_num by rewrite eqrC rpredM ?realn.
+have gtr0 : r > 0 by rewrite eqrC mulr_gt0 // Re_zeta_gt0.
+pose P : {poly algC} := Poly [:: -1; 1; 1].
+have {}req : root P r.
+  apply/eqP; move: req.
+  have -> : 'zeta_5 ^+ 2 + 'zeta_5 ^- 2 = r ^+ 2 - 2 by rewrite /r; field.
+  rewrite /P !hornerE /r /= => <-; ring.
+have szP : size P = 3%N.
+  rewrite /P /Poly /= !size_cons_poly oppr_eq0 oner_eq0 !andbF /=.
+  by rewrite size_polyC eqxx /=.
+have {szP} /(NumClosedMonic.deg2_poly_factor szP) eqP : P \is monic.
+  by rewrite monicE lead_coefE szP /= /P coef_Poly.
+move: req; rewrite {}eqP /P !coef_Poly /= {P}.
+rewrite rootM !root_XsubC expr1n mulrN1 opprK -[1 + 4]/5 => /orP[] /eqP eqr.
+  exfalso; move: gtr0; apply/negP; rewrite -!real_leNgt //.
+  by rewrite {}eqr -opprD mulNr oppr_le0 divr_ge0 // addr_ge0 // sqrtC_ge0.
+have eq4 : 4 = 2 * 2 :> algC by ring.
+have {r eqr gtr0 rreal eqrC} rez5 : 'Re 'zeta_5 = (sqrtC 5 - 1) / 4.
+  by rewrite eq4 invfM // mulrA addrC -eqr eqrC -mulrA mulrC divfK.
+rewrite (algCrect 'zeta_5) rez5 -mulrA; congr (_ + 'i * _).
+have /eqP : ('Im 'zeta_5) ^+ 2 = (sqrtC (10 + 2 * sqrtC 5) / 4) ^+ 2.
+  have /eqP := normC2_Re_Im 'zeta_5.
+  rewrite (unitcircleP _ (zeta_unitcircle _)) // addrC -subr_eq => /eqP <-.
+  by rewrite expr_div_n sqrtCK rez5; field: (@sqrtCK algC 5).
+rewrite eqf_sqr => /orP[] /eqP // Habs; exfalso.
+have gts0 : 0 < 10 + 2 * sqrtC 5 :> algC.
+  by rewrite addr_gt0 // mulr_gt0 // sqrtC_gt0.
+have : 'Im 'zeta_5 >= 0 by rewrite Im_zeta_ge0.
+rewrite {}Habs; apply/negP; rewrite -!real_ltNge // ?rpred_simpl //=.
+  exact: (sqrtC_real (ltW gts0)).
+by rewrite oppr_lt0 mulr_gt0 ?invr_gt0 // sqrtC_gt0.
 Qed.
